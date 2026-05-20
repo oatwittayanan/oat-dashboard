@@ -268,6 +268,59 @@ body {
 #toast.success { border-color: var(--green); color: var(--green); }
 #toast.error   { border-color: var(--red); color: var(--red); }
 
+/* ---- Habit Summary 7-day grid ---- */
+.summary-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.summary-row:last-child { border-bottom: none; }
+
+.summary-label {
+  font-size: 13px; width: 110px; flex-shrink: 0; color: var(--fg);
+}
+.summary-dots {
+  display: flex; gap: 5px; flex: 1;
+}
+.dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.dot.done { background: var(--green); }
+.dot.miss { background: var(--hairline-strong); }
+.dot.today-dot { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+.summary-score {
+  font-size: 12px; font-family: var(--font-mono);
+  color: var(--fg-muted); white-space: nowrap; min-width: 52px; text-align: right;
+}
+
+/* ---- Vitamin Streak ---- */
+.vit-streak-wrap {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.streak-display {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.streak-emoji { font-size: 18px; }
+.streak-num {
+  font-size: 22px; font-weight: 700; font-family: var(--font-mono);
+  color: var(--fg); line-height: 1;
+}
+.streak-label { font-size: 12px; color: var(--fg-muted); }
+.streak-msg {
+  font-size: 11px; margin-left: auto;
+  color: var(--fg-dim); font-style: italic;
+}
+.streak-bar-bg {
+  height: 4px; background: var(--hairline-strong); border-radius: 99px; overflow: hidden;
+}
+.streak-bar-fill {
+  height: 100%; border-radius: 99px;
+  transition: width 0.6s ease;
+}
+
 /* ---- Setup banner ---- */
 #setup-banner {
   background: var(--amber-soft); border: 1px solid var(--amber-line);

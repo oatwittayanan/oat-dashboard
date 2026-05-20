@@ -179,6 +179,112 @@ async function toggleHabit(row) {
   }
 }
 
+// ===== HABIT SUMMARY (7 วัน) =====
+async function loadHabitSummary() {
+  const el = document.getElementById("habit-summary");
+  const sevenAgo = new Date(today);
+  sevenAgo.setDate(sevenAgo.getDate() - 6);
+  const startStr = sevenAgo.toISOString().slice(0, 10);
+
+  const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
+    filter: { and: [
+      { property:"Date", date:{ on_or_after: startStr } },
+      { property:"Date", date:{ on_or_before: todayStr } },
+    ]},
+    sorts: [{ property:"Date", direction:"ascending" }],
+    page_size: 7,
+  });
+
+  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
+
+  // map date → properties
+  const dayMap = {};
+  for (const p of data.results) {
+    const d = p.properties?.Date?.date?.start;
+    if (d) dayMap[d] = p.properties;
+  }
+
+  // สร้าง array 7 วัน (เก่า→ใหม่)
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+
+  let html = "";
+  for (const key of HABIT_KEYS) {
+    const label = HABIT_LABELS[key] || key;
+    let count = 0;
+    let dots = "";
+    days.forEach((day, idx) => {
+      const checked = dayMap[day]?.[key]?.checkbox || false;
+      if (checked) count++;
+      const isToday = day === todayStr;
+      dots += `<span class="dot ${checked ? "done" : "miss"}${isToday ? " today-dot" : ""}" title="${day}"></span>`;
+    });
+    const pct = count / 7;
+    const emoji = pct >= 1 ? "🔥" : pct >= 0.71 ? "🟢" : pct >= 0.43 ? "🟡" : count > 0 ? "🔴" : "⚠️";
+    html += `
+      <div class="summary-row">
+        <div class="summary-label">${label}</div>
+        <div class="summary-dots">${dots}</div>
+        <div class="summary-score">${count}/7 ${emoji}</div>
+      </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ===== VITAMIN STREAK =====
+async function loadVitaminStreak() {
+  const data = await notionPost(`/databases/${DB.vitaminLog}/query`, {
+    sorts: [{ property:"Date", direction:"descending" }],
+    page_size: 60,
+  });
+  if (!data || !data.results) return;
+
+  const vitMap = {};
+  for (const p of data.results) {
+    const dateVal = p.properties?.Date?.title?.map(t => t.plain_text).join("") || "";
+    if (!dateVal) continue;
+    const d = new Date(dateVal);
+    const isWE = d.getDay() === 0 || d.getDay() === 6;
+    const schedule = isWE ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
+    vitMap[dateVal] = schedule.every(v => p.properties?.[v.key]?.checkbox === true);
+  }
+
+  let streak = 0;
+  const cur = new Date(today);
+  while (true) {
+    const ds = cur.toISOString().slice(0, 10);
+    if (vitMap[ds] === true) { streak++; cur.setDate(cur.getDate() - 1); }
+    else break;
+  }
+
+  const el = document.getElementById("vit-streak");
+  if (!el) return;
+  let emoji, msg;
+  if (streak === 0)     { emoji = "😐"; msg = "เริ่มวันนี้เลย"; }
+  else if (streak < 4)  { emoji = "🙂"; msg = "กำลังไปได้ดี"; }
+  else if (streak < 7)  { emoji = "😊"; msg = "ทำต่อไป!"; }
+  else if (streak < 14) { emoji = "💪"; msg = "สัปดาห์แรกผ่านแล้ว"; }
+  else if (streak < 30) { emoji = "😄"; msg = "วินัยดีมาก"; }
+  else                  { emoji = "🏆"; msg = "ยอดเยี่ยม!"; }
+
+  const barPct = Math.min(streak / 30 * 100, 100);
+  const barColor = streak < 4 ? "var(--red)" : streak < 7 ? "var(--amber)" : "var(--green)";
+  el.innerHTML = `
+    <div class="streak-display">
+      <span class="streak-emoji">${emoji}</span>
+      <span class="streak-num">${streak}</span>
+      <span class="streak-label">วันติดต่อกัน</span>
+      <span class="streak-msg">${msg}</span>
+    </div>
+    <div class="streak-bar-bg">
+      <div class="streak-bar-fill" style="width:${barPct}%;background:${barColor}"></div>
+    </div>`;
+}
+
 // ===== VITAMINS =====
 async function loadVitamins() {
   const el = document.getElementById("vit-list");
@@ -547,7 +653,9 @@ function loadAll() {
     return;
   }
   loadHabits();
+  loadHabitSummary();
   loadVitamins();
+  loadVitaminStreak();
   loadRoutines();
   loadTasks();
 }
