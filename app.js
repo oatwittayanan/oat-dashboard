@@ -2,7 +2,7 @@
 // ===== CONFIG =====
 // ใส่ URL ของ Cloudflare Worker ที่นี่หลัง deploy
 // หรือตั้งผ่านหน้าเว็บ (กดไอคอน Settings)
-const DEFAULT_API_BASE = "";
+const DEFAULT_API_BASE = "https://oat-notion-proxy.wittayanan-oat.workers.dev";
 
 // Notion Database IDs
 const DB = {
