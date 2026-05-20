@@ -246,6 +246,14 @@ async function toggleVitamin(row) {
 }
 
 // ===== ROUTINES =====
+function isDueThisMonthOrOverdue(dateStr) {
+  if (!dateStr) return true; // ไม่มีวัน Last Done เลย → แสดงเสมอ
+  const d = new Date(dateStr);
+  const now = new Date(todayStr);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return d <= endOfMonth;
+}
+
 async function loadRoutines() {
   const el = document.getElementById("routine-list");
   const data = await notionPost(`/databases/${DB.routines}/query`, {
@@ -256,13 +264,22 @@ async function loadRoutines() {
   if (!data || !data.results) { el.innerHTML = `<div class="empty">ไม่สามารถโหลดข้อมูลได้</div>`; return; }
 
   routineData = data.results;
-  renderRoutines(routineData);
+  // แสดงเฉพาะที่ Due เดือนนี้หรือเลยกำหนดแล้ว
+  const visible = routineData.filter(r => {
+    const nextDue = r.properties["Next Due"]?.formula?.date?.start || null;
+    return isDueThisMonthOrOverdue(nextDue);
+  });
+  renderRoutines(visible);
   loadFocus();
 }
 
 function renderRoutines(routines) {
   const el = document.getElementById("routine-list");
-  if (!routines.length) { el.innerHTML = `<div class="empty">ไม่มี Routines</div>`; return; }
+  if (!routines.length) {
+    el.innerHTML = `<div class="empty">ไม่มี Routines ที่ต้องทำเดือนนี้ 🎉</div>`;
+    document.getElementById("routine-count").textContent = "0";
+    return;
+  }
 
   let html = "";
   for (const r of routines) {
@@ -276,7 +293,7 @@ function renderRoutines(routines) {
     let nextLabel = "ยังไม่ได้ตั้งวัน";
     let nextClass = "";
     if (nextDue) {
-      if (diff < 0)      { nextLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; nextClass = "overdue"; }
+      if (diff < 0)       { nextLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; nextClass = "overdue"; }
       else if (diff === 0) { nextLabel = "ครบวันนี้"; nextClass = "soon"; }
       else if (diff <= 7)  { nextLabel = `อีก ${diff} วัน (${thaiDate(nextDue)})`; nextClass = "soon"; }
       else                 { nextLabel = thaiDate(nextDue); }
