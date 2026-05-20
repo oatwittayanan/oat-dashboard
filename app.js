@@ -299,13 +299,28 @@ function renderRoutines(routines) {
   document.getElementById("routine-count").textContent = routines.length;
 }
 
+function calcNextDue(freq, fromDate) {
+  const d = new Date(fromDate);
+  if (freq === "weekly")   d.setDate(d.getDate() + 7);
+  else if (freq === "monthly")  d.setMonth(d.getMonth() + 1);
+  else if (freq === "3months")  d.setMonth(d.getMonth() + 3);
+  else if (freq === "6months")  d.setMonth(d.getMonth() + 6);
+  else if (freq === "yearly")   d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 async function markRoutineDone(pageId, btn) {
   btn.disabled = true;
   btn.textContent = "...";
 
-  const res = await notionPatch(`/pages/${pageId}`, {
-    properties: { "Last Done": { date: { start: todayStr } } },
-  });
+  const routine = routineData.find(r => r.id === pageId);
+  const freq = routine?.properties?.Frequency?.select?.name || "";
+  const nextDueDate = freq ? calcNextDue(freq, todayStr) : null;
+
+  const props = { "Last Done": { date: { start: todayStr } } };
+  if (nextDueDate) props["Next Due Date"] = { date: { start: nextDueDate } };
+
+  const res = await notionPatch(`/pages/${pageId}`, { properties: props });
 
   if (res) {
     showToast("✅ บันทึกแล้ว");
