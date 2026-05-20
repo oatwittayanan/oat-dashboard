@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="OAT OS"/>
+  <title>OAT Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">OAT Dashboard</div>
+    <div class="header-date" id="header-date"></div>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="refresh-btn" title="Refresh">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M13.5 8A5.5 5.5 0 1 1 10 3.07"/><path d="M10 1v3h3"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="theme-btn" title="Toggle theme">
+      <svg id="icon-sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M14.5 8H13M3 8H1.5M12.6 3.4l-1.05 1.05M4.45 11.55 3.4 12.6M12.6 12.6l-1.05-1.05M4.45 4.45 3.4 3.4"/>
+      </svg>
+      <svg id="icon-moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="display:none">
+        <path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7Z"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="setup-btn" title="Settings">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Setup Banner -->
+  <div id="setup-banner" style="display:none">
+    <strong>ตั้งค่า API</strong> — ใส่ URL ของ Cloudflare Worker เพื่อเชื่อมต่อ Notion
+    <input type="text" id="api-url-input" placeholder="https://oat-notion-proxy.xxx.workers.dev"/>
+    <button id="setup-save">บันทึก</button>
+  </div>
+
+  <!-- Focus Now -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">🎯 Focus Now</span>
+      <span class="section-count" id="focus-count">—</span>
+    </div>
+    <div class="card" id="focus-list">
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+    </div>
+  </div>
+
+  <!-- Habit Today -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">✅ Habits วันนี้</span>
+      <span class="section-count" id="habit-count">—</span>
+    </div>
+    <div class="card" id="habit-list">
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+    </div>
+  </div>
+
+  <!-- Vitamin -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">💊 วิตามินวันนี้</span>
+      <span class="section-count" id="vit-count">—</span>
+    </div>
+    <div class="card" id="vit-list">
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+    </div>
+  </div>
+
+  <!-- Routines -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">🔄 Routines</span>
+      <span class="section-count" id="routine-count">—</span>
+    </div>
+    <div class="card" id="routine-list">
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">📋 Tasks ค้าง</span>
+      <span class="section-count" id="task-count">—</span>
+    </div>
+    <div class="card" id="task-list">
+      <div class="skeleton skeleton-row"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
