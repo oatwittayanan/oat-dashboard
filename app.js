@@ -29,13 +29,13 @@ const VITAMIN_SCHEDULE = {
   ],
 };
 
-const HABIT_KEYS = ["8 hr. Sleep","2 lt. Water","Workout","Reading","Content"];
+const HABIT_KEYS = ["8 hr. Sleep","Food","Workout","Reading","Content"];
 const HABIT_LABELS = {
-  "8 hr. Sleep": "นอน 8 ชั่วโมง",
-  "2 lt. Water": "ดื่มน้ำ 2 ลิตร",
-  "Workout": "ออกกำลังกาย",
-  "Reading": "อ่านหนังสือ",
-  "Content": "ทำ Content",
+  "8 hr. Sleep": "8 hr. Sleep",
+  "Food": "Food",
+  "Workout": "Workout",
+  "Reading": "Reading",
+  "Content": "Content",
 };
 
 // ===== STATE =====
