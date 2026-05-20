@@ -43,6 +43,7 @@ let apiBase = localStorage.getItem("oat_api_base") || DEFAULT_API_BASE;
 let todayHabitPageId = null;
 let todayVitPageId   = null;
 let routineData = [];
+let taskData = [];
 
 // ===== UTILS =====
 const today = new Date();
@@ -360,6 +361,9 @@ async function loadTasks() {
 
   if (!data || !data.results) { el.innerHTML = `<div class="empty">ไม่สามารถโหลดข้อมูลได้</div>`; return; }
 
+  taskData = data.results;
+  loadFocus();
+
   if (!data.results.length) {
     el.innerHTML = `<div class="empty">ไม่มี Tasks ค้าง</div>`;
     document.getElementById("task-count").textContent = "0";
@@ -418,7 +422,35 @@ function loadFocus() {
   const el = document.getElementById("focus-list");
   const items = [];
 
-  // Routines เลยกำหนด / ครบวันนี้ / อีก 3 วัน
+  // Tasks: เลยกำหนด + ไม่มีกำหนด (ค้าง) + due ใน 7 วัน
+  for (const r of taskData) {
+    const p = r.properties;
+    const name = p.Name?.title?.map(t=>t.plain_text).join("") || "";
+    const dueDate = p["Due Date"]?.date?.start || null;
+    const diff = daysDiff(dueDate);
+
+    let meta = "";
+    let show = false;
+
+    if (diff === null) {
+      // ไม่มีกำหนด = ค้างอยู่ ให้แสดงเสมอ
+      meta = "Task — ไม่มีกำหนด";
+      show = true;
+    } else if (diff < 0) {
+      meta = `Task — เลยกำหนด ${Math.abs(diff)} วัน`;
+      show = true;
+    } else if (diff <= 7) {
+      meta = diff === 0 ? "Task — Due วันนี้" : `Task — Due อีก ${diff} วัน (${thaiDate(dueDate)})`;
+      show = true;
+    }
+
+    if (show) {
+      // ค้างไม่มีกำหนด = ใช้ diff 999 เรียงท้ายสุด
+      items.push({ name, diff: diff ?? 999, type: "task", meta });
+    }
+  }
+
+  // Routines: เลยกำหนด / due ใน 3 วัน
   for (const r of routineData) {
     const p = r.properties;
     const name = p.Name?.title?.map(t=>t.plain_text).join("") || "";
@@ -426,15 +458,16 @@ function loadFocus() {
     const diff = daysDiff(nextDue);
     if (diff === null) continue;
     if (diff <= 3) {
-      items.push({ name, diff, type: "routine", id: r.id,
+      items.push({ name, diff, type: "routine",
         meta: diff < 0 ? `Routine — เลย ${Math.abs(diff)} วัน` : diff === 0 ? "Routine — ครบวันนี้" : `Routine — อีก ${diff} วัน` });
     }
   }
 
-  items.sort((a,b) => a.diff - b.diff);
+  // เรียง: overdue → today → soon → ค้าง (ไม่มีกำหนด)
+  items.sort((a, b) => a.diff - b.diff);
 
   if (!items.length) {
-    el.innerHTML = `<div class="empty">ไม่มีงานเร่งด่วน</div>`;
+    el.innerHTML = `<div class="empty">ไม่มีงานเร่งด่วน 🎉</div>`;
     document.getElementById("focus-count").textContent = "0";
     return;
   }
@@ -442,7 +475,7 @@ function loadFocus() {
   let html = "";
   for (const item of items) {
     let cls = item.diff < 0 ? "overdue" : item.diff === 0 ? "today" : "soon";
-    let badge = item.diff < 0 ? "เลยกำหนด" : item.diff === 0 ? "วันนี้" : `${item.diff}d`;
+    let badge = item.diff < 0 ? "เลยกำหนด" : item.diff === 0 ? "วันนี้" : item.diff === 999 ? "ค้าง" : `${item.diff}d`;
     html += `
       <div class="focus-card ${cls}">
         <div class="focus-dot"></div>
