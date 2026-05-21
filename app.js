@@ -29,10 +29,10 @@ const VITAMIN_SCHEDULE = {
   ],
 };
 
-const HABIT_KEYS = ["8 hr. Sleep","Food","Workout","Reading","Content"];
+const HABIT_KEYS = ["8 hr. Sleep","Water 2 lt.","Workout","Reading","Content"];
 const HABIT_LABELS = {
   "8 hr. Sleep": "8 hr. Sleep",
-  "Food": "Food",
+  "Water 2 lt.": "Water 2 lt.",
   "Workout": "Workout",
   "Reading": "Reading",
   "Content": "Content",
