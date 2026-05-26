@@ -363,10 +363,11 @@ async function loadRoutines() {
   if (!data || !data.results) { el.innerHTML = `<div class="empty">ไม่สามารถโหลดข้อมูลได้</div>`; return; }
 
   routineData = data.results;
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
   const visible = routineData.filter(r => {
     const nextDue = r.properties["Next Due"]?.formula?.date?.start || null;
     if (!nextDue) return false;
-    return daysDiff(nextDue) <= 3;
+    return nextDue <= endOfMonth;
   });
   renderRoutines(visible);
   loadFocus();
@@ -375,7 +376,7 @@ async function loadRoutines() {
 function renderRoutines(routines) {
   const el = document.getElementById("routine-list");
   if (!routines.length) {
-    el.innerHTML = `<div class="empty">ไม่มี Routines ใน 3 วันข้างหน้า 🎉</div>`;
+    el.innerHTML = `<div class="empty">ไม่มี Routines ที่ต้องทำเดือนนี้ 🎉</div>`;
     document.getElementById("routine-count").textContent = "0";
     return;
   }
