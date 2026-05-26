@@ -353,14 +353,6 @@ async function toggleVitamin(row) {
 }
 
 // ===== ROUTINES =====
-function isDueThisMonthOrOverdue(dateStr) {
-  if (!dateStr) return true; // ไม่มีวัน Last Done เลย → แสดงเสมอ
-  const d = new Date(dateStr);
-  const now = new Date(todayStr);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return d <= endOfMonth;
-}
-
 async function loadRoutines() {
   const el = document.getElementById("routine-list");
   const data = await notionPost(`/databases/${DB.routines}/query`, {
@@ -371,10 +363,10 @@ async function loadRoutines() {
   if (!data || !data.results) { el.innerHTML = `<div class="empty">ไม่สามารถโหลดข้อมูลได้</div>`; return; }
 
   routineData = data.results;
-  // แสดงเฉพาะที่ Due เดือนนี้หรือเลยกำหนดแล้ว
   const visible = routineData.filter(r => {
     const nextDue = r.properties["Next Due"]?.formula?.date?.start || null;
-    return isDueThisMonthOrOverdue(nextDue);
+    if (!nextDue) return false;
+    return daysDiff(nextDue) <= 3;
   });
   renderRoutines(visible);
   loadFocus();
@@ -383,7 +375,7 @@ async function loadRoutines() {
 function renderRoutines(routines) {
   const el = document.getElementById("routine-list");
   if (!routines.length) {
-    el.innerHTML = `<div class="empty">ไม่มี Routines ที่ต้องทำเดือนนี้ 🎉</div>`;
+    el.innerHTML = `<div class="empty">ไม่มี Routines ใน 3 วันข้างหน้า 🎉</div>`;
     document.getElementById("routine-count").textContent = "0";
     return;
   }
@@ -470,23 +462,30 @@ async function loadTasks() {
   taskData = data.results;
   loadFocus();
 
-  if (!data.results.length) {
-    el.innerHTML = `<div class="empty">ไม่มี Tasks ค้าง</div>`;
+  const visible = data.results.filter(r => {
+    const dueDate = r.properties["Due Date"]?.date?.start || null;
+    if (!dueDate) return false;
+    return daysDiff(dueDate) <= 3;
+  });
+
+  if (!visible.length) {
+    el.innerHTML = `<div class="empty">ไม่มี Tasks ใน 3 วันข้างหน้า 🎉</div>`;
     document.getElementById("task-count").textContent = "0";
     return;
   }
 
   let html = "";
-  for (const r of data.results) {
+  for (const r of visible) {
     const p = r.properties;
     const name = p.Name?.title?.map(t=>t.plain_text).join("") || "";
     const dueDate = p["Due Date"]?.date?.start || null;
     const status = p.Status?.select?.name || "";
     const diff = daysDiff(dueDate);
 
-    let dueLabel = dueDate ? thaiDate(dueDate) : "ไม่มีกำหนด";
+    let dueLabel = thaiDate(dueDate);
     let dueClass = "";
-    if (diff !== null && diff < 0) { dueLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; dueClass = "overdue"; }
+    if (diff < 0) { dueLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; dueClass = "overdue"; }
+    else if (diff === 0) { dueLabel = "Due วันนี้"; dueClass = "soon"; }
 
     const statusClass = status === "IN PROGRESS" ? "in-progress" : "todo";
     const statusLabel = status === "IN PROGRESS" ? "In Progress" : (status || "To Do");
@@ -503,7 +502,7 @@ async function loadTasks() {
   }
 
   el.innerHTML = html;
-  document.getElementById("task-count").textContent = data.results.length;
+  document.getElementById("task-count").textContent = visible.length;
 }
 
 async function markTaskDone(pageId, btn) {
@@ -528,35 +527,28 @@ function loadFocus() {
   const el = document.getElementById("focus-list");
   const items = [];
 
-  // Tasks: เลยกำหนด + ไม่มีกำหนด (ค้าง) + due ใน 7 วัน
+  // Tasks: เลยกำหนด + due ใน 3 วัน (ไม่แสดงที่ไม่มีกำหนด)
   for (const r of taskData) {
     const p = r.properties;
     const name = p.Name?.title?.map(t=>t.plain_text).join("") || "";
     const dueDate = p["Due Date"]?.date?.start || null;
     const diff = daysDiff(dueDate);
 
+    if (diff === null) continue;
+
     let meta = "";
-    let show = false;
-
-    if (diff === null) {
-      // ไม่มีกำหนด = ค้างอยู่ ให้แสดงเสมอ
-      meta = "Task — ไม่มีกำหนด";
-      show = true;
-    } else if (diff < 0) {
+    if (diff < 0) {
       meta = `Task — เลยกำหนด ${Math.abs(diff)} วัน`;
-      show = true;
-    } else if (diff <= 7) {
+    } else if (diff <= 3) {
       meta = diff === 0 ? "Task — Due วันนี้" : `Task — Due อีก ${diff} วัน (${thaiDate(dueDate)})`;
-      show = true;
+    } else {
+      continue;
     }
 
-    if (show) {
-      // ค้างไม่มีกำหนด = ใช้ diff 999 เรียงท้ายสุด
-      items.push({ name, diff: diff ?? 999, type: "task", meta });
-    }
+    items.push({ name, diff, type: "task", meta });
   }
 
-  // Routines: เลยกำหนด / due ใน 3 วัน
+  // Routines: เลยกำหนด + due ใน 3 วัน
   for (const r of routineData) {
     const p = r.properties;
     const name = p.Name?.title?.map(t=>t.plain_text).join("") || "";
