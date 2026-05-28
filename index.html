@@ -50,6 +50,77 @@
     <button id="setup-save">บันทึก</button>
   </div>
 
+  <!-- Character -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">⚔️ Character</span>
+      <span class="char-level-badge" id="char-level">Lv.1</span>
+    </div>
+    <div class="card char-card">
+      <div class="char-top">
+        <div class="char-name-wrap">
+          <span class="char-name">OAT</span>
+          <span class="char-title" id="char-title">มือใหม่</span>
+        </div>
+        <span class="char-streak" id="char-streak">Streak 0 วัน</span>
+      </div>
+      <div class="char-xp-wrap">
+        <div class="char-bar-bg"><div class="char-xp-fill" id="xp-bar" style="width:0%"></div></div>
+        <div class="char-xp-label" id="xp-label">0 / 1,000 XP</div>
+      </div>
+      <div class="char-hp-wrap">
+        <div class="char-hp-row">
+          <span class="char-hp-icon">❤️ HP</span>
+          <span class="char-hp-val" id="hp-value-label">100/100</span>
+          <span class="char-hp-state" id="hp-state-label">💚 Vitalized</span>
+        </div>
+        <div class="char-bar-bg"><div class="char-hp-fill" id="hp-bar" style="width:100%"></div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box"><span class="stat-icon">💪</span><span class="stat-name">STR</span><span class="stat-val" id="stat-str">0</span></div>
+        <div class="stat-box"><span class="stat-icon">🧠</span><span class="stat-name">INT</span><span class="stat-val" id="stat-int">0</span></div>
+        <div class="stat-box"><span class="stat-icon">📢</span><span class="stat-name">CHA</span><span class="stat-val" id="stat-cha">0</span></div>
+        <div class="stat-box"><span class="stat-icon">🏠</span><span class="stat-name">ORD</span><span class="stat-val" id="stat-ord">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marathon Quest -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">🏃 Marathon Quest</span>
+      <span class="section-count" id="marathon-tier-badge">🌱 Starter</span>
+    </div>
+    <div class="card">
+      <div class="marathon-inner">
+        <div class="marathon-week-row">
+          <span class="marathon-week-label">สัปดาห์นี้</span>
+          <span class="marathon-week-km"><span id="marathon-week-km">0</span> / <span id="marathon-week-target">5</span> km</span>
+        </div>
+        <div class="char-bar-bg marathon-bar">
+          <div class="char-marathon-fill" id="marathon-week-bar" style="width:0%"></div>
+        </div>
+        <div class="marathon-footer">
+          <span id="marathon-total-km">สะสม 0 km</span>
+          <span id="marathon-next-tier">⬆️ Advance: 10 km/week</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saving Counter -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">☕ ประหยัดกาแฟ</span>
+    </div>
+    <div class="card">
+      <div class="saving-inner">
+        <span class="saving-amount" id="saving-total">฿0</span>
+        <span class="saving-meta" id="saving-cups">0 แก้ว × ฿50</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Focus Now -->
   <div class="section">
     <div class="section-header">
