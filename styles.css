@@ -451,6 +451,93 @@ body {
 .num-input:focus { border-color: var(--blue); }
 .num-unit { font-size: 11px; color: var(--fg-muted); width: 24px; }
 
+/* ---- Coin chip on habits ---- */
+.coin-chip { background: rgba(251,191,36,0.15); color: #f59e0b; }
+
+/* ---- Coin section ---- */
+.coin-balance-row {
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.coin-big {
+  font-size: 28px; font-weight: 700; font-family: var(--font-mono);
+  color: var(--amber);
+}
+.coin-unit { font-size: 14px; color: var(--fg-muted); }
+
+/* ---- Reward rows ---- */
+.reward-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+  transition: background 0.12s;
+}
+.reward-row:last-child { border-bottom: none; }
+.reward-row.locked { opacity: 0.45; }
+
+.reward-icon { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+.reward-info { flex: 1; min-width: 0; }
+.reward-name { font-size: 14px; font-weight: 500; display: block; }
+.reward-cost-label {
+  font-size: 11px; color: var(--amber); font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.redeem-btn {
+  padding: 5px 14px; border-radius: var(--radius-sm);
+  background: var(--amber-soft); border: 1px solid var(--amber-line);
+  color: var(--amber); font-size: 12px; font-weight: 600;
+  font-family: var(--font-sans); cursor: pointer;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.redeem-btn:hover:not(:disabled) { background: var(--amber); color: #000; }
+.redeem-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ---- Redeem Modal ---- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--gutter);
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: var(--bg-elev);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  width: 100%; max-width: 320px;
+  text-align: center;
+}
+.modal-reward-icon { font-size: 40px; margin-bottom: 10px; }
+.modal-reward-name {
+  font-size: 18px; font-weight: 700; margin-bottom: 6px;
+}
+.modal-reward-cost {
+  font-size: 14px; color: var(--amber); font-family: var(--font-mono);
+  font-weight: 600; margin-bottom: 4px;
+}
+.modal-reward-after {
+  font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono);
+  margin-bottom: 20px;
+}
+.modal-actions { display: flex; gap: 10px; }
+.modal-cancel, .modal-confirm {
+  flex: 1; padding: 10px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; font-family: var(--font-sans);
+  cursor: pointer; border: none; transition: all 0.15s;
+}
+.modal-cancel {
+  background: var(--bg-elev-2); color: var(--fg-muted);
+  border: 1px solid var(--hairline-strong);
+}
+.modal-cancel:hover { color: var(--fg); }
+.modal-confirm {
+  background: var(--amber); color: #000;
+}
+.modal-confirm:hover { opacity: 0.88; }
+
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
   .focus-badge, .routine-freq { display: none; }

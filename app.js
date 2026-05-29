@@ -1,4 +1,4 @@
-// OAT Dashboard — app.js v2 (Gamification)
+// OAT Dashboard — app.js v3 (Gamification + Coin System)
 
 // ===== CONFIG =====
 const DEFAULT_API_BASE = "https://oat-notion-proxy.wittayanan-oat.workers.dev";
@@ -33,23 +33,25 @@ const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Weight Training","Reading","C
 const HABIT_NUMS   = ["Run km","Cardio min"];
 
 const HABIT_META = {
-  "8 hr. Sleep":     { icon:"😴", label:"8 hr. Sleep",    hpRecover:20 },
-  "Water 2 lt.":     { icon:"💧", label:"Water 2 lt.",    hpRecover:10 },
-  "Weight Training": { icon:"🏋️", label:"Weight Training", stat:"STR", xp:15 },
-  "Reading":         { icon:"📖", label:"Reading",          stat:"INT", xp:10 },
-  "Content":         { icon:"📹", label:"Content",          stat:"CHA", xp:15 },
-  "Cook":            { icon:"🍳", label:"ทำอาหารเอง",       stat:"ORD", xp:10, hpBonus:5 },
-  "No Coffee":       { icon:"☕", label:"ไม่ซื้อกาแฟ",      stat:"ORD", xp:10, saving:50 },
-  "Run km":          { icon:"🏃", label:"วิ่ง",             stat:"STR", xpPer:10, per:5, marathon:true },
-  "Cardio min":      { icon:"🚴", label:"Cardio",           stat:"STR", xpPer:5,  per:15 },
+  "8 hr. Sleep":     { icon:"😴", label:"8 hr. Sleep",    hpRecover:20, coins:2 },
+  "Water 2 lt.":     { icon:"💧", label:"Water 2 lt.",    hpRecover:10, coins:1 },
+  "Weight Training": { icon:"🏋️", label:"Weight Training", stat:"STR", xp:15, coins:3 },
+  "Reading":         { icon:"📖", label:"Reading",          stat:"INT", xp:10, coins:2 },
+  "Content":         { icon:"📹", label:"Content",          stat:"CHA", xp:15, coins:3 },
+  "Cook":            { icon:"🍳", label:"ทำอาหารเอง",       stat:"ORD", xp:10, hpBonus:5, coins:2 },
+  "No Coffee":       { icon:"☕", label:"ไม่ซื้อกาแฟ",      stat:"ORD", xp:10, saving:50, coins:2 },
+  "Run km":          { icon:"🏃", label:"วิ่ง",             stat:"STR", xpPer:10, per:5, marathon:true, coinsPer:3 },
+  "Cardio min":      { icon:"🚴", label:"Cardio",           stat:"STR", xpPer:5,  per:15, coinsPer:2 },
 };
 
 // ===== GAME CONSTANTS =====
-const HP_DRAIN_PER_DAY  = 15;
-const HP_MAX            = 100;
-const XP_PER_LEVEL      = 1000;
-const PERFECT_DAY_BONUS = 50;
-const SAVING_PER_CUP    = 50;
+const HP_DRAIN_PER_DAY   = 15;
+const HP_MAX             = 100;
+const XP_PER_LEVEL       = 1000;
+const PERFECT_DAY_BONUS  = 50;
+const PERFECT_DAY_COINS  = 10;
+const SAVING_PER_CUP     = 50;
+const VITAMIN_COINS      = 1;
 
 const MARATHON_TIERS = [
   { tier:1, name:"Starter",    km:5,  badge:"🌱", bonus:0   },
@@ -62,25 +64,34 @@ const MARATHON_TIERS = [
 ];
 
 const LEVEL_TITLES = [
-  { min:1,  title:"มือใหม่"        },
-  { min:3,  title:"กำลังสตาร์ท"   },
-  { min:5,  title:"มีวินัย"        },
-  { min:8,  title:"Consistent"     },
-  { min:10, title:"The Investor"   },
+  { min:1,  title:"มือใหม่"          },
+  { min:3,  title:"กำลังสตาร์ท"     },
+  { min:5,  title:"มีวินัย"          },
+  { min:8,  title:"Consistent"       },
+  { min:10, title:"The Investor"     },
   { min:15, title:"Marathon Trainee" },
-  { min:20, title:"Content Creator" },
-  { min:30, title:"ผู้เชี่ยวชาญ"  },
-  { min:50, title:"ตำนาน"          },
+  { min:20, title:"Content Creator"  },
+  { min:30, title:"ผู้เชี่ยวชาญ"    },
+  { min:50, title:"ตำนาน"            },
+];
+
+// ===== REWARDS (เพิ่มรายการใหม่ได้ที่นี่) =====
+const REWARDS = [
+  { id:"cafe", icon:"☕", name:"Cafe",         cost:30  },
+  { id:"beer", icon:"🍺", name:"Beer",          cost:50  },
+  { id:"meal", icon:"🍽️", name:"Special Meal",  cost:70  },
+  { id:"maid", icon:"🧹", name:"จ้างแม่บ้าน",  cost:100 },
 ];
 
 // ===== STATE =====
-let apiBase         = localStorage.getItem("oat_api_base") || DEFAULT_API_BASE;
+let apiBase          = localStorage.getItem("oat_api_base") || DEFAULT_API_BASE;
 let todayHabitPageId = null;
 let todayVitPageId   = null;
 let routineData      = [];
 let taskData         = [];
 let gameState        = null;
 let gameStatePageId  = null;
+let pendingReward    = null;
 
 // ===== DATE UTILS =====
 const todayStr  = new Date().toLocaleDateString("en-CA", { timeZone:"Asia/Bangkok" });
@@ -88,9 +99,8 @@ const today     = new Date(todayStr + "T00:00:00");
 const isWeekend = today.getDay() === 0 || today.getDay() === 6;
 
 function getWeekStart(ds) {
-  const d   = new Date(ds + "T00:00:00");
-  const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  const d = new Date(ds + "T00:00:00");
+  d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()));
   return d.toISOString().slice(0, 10);
 }
 
@@ -99,7 +109,6 @@ function daysDiff(ds) {
   if (!ds) return null;
   return Math.round((new Date(ds + "T00:00:00") - today) / 86400000);
 }
-
 function thaiDate(d) {
   const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
   const days   = ["อา","จ","อ","พ","พฤ","ศ","ส"];
@@ -107,29 +116,23 @@ function thaiDate(d) {
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 }
 function dateStr(d) { return d instanceof Date ? d.toISOString().slice(0,10) : d; }
-
 function freqLabel(f) {
   return { weekly:"ทุกสัปดาห์", monthly:"ทุกเดือน", "3months":"ทุก 3 เดือน",
            "6months":"ทุก 6 เดือน", yearly:"ทุกปี" }[f] || f;
 }
-
 function showToast(msg, type = "success") {
   const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = `show ${type}`;
+  t.textContent = msg; t.className = `show ${type}`;
   setTimeout(() => { t.className = ""; }, 2500);
 }
-
 function statKey(stat) {
   return { STR:"xpStr", INT:"xpInt", CHA:"xpCha", ORD:"xpOrd" }[stat] || null;
 }
-
 function getLevelTitle(level) {
   let title = LEVEL_TITLES[0].title;
   for (const t of LEVEL_TITLES) { if (level >= t.min) title = t.title; }
   return title;
 }
-
 function getHPState(hp) {
   if (hp > 80) return { emoji:"💚", label:"Vitalized", xpMult:1.1 };
   if (hp > 50) return { emoji:"💛", label:"Normal",    xpMult:1.0 };
@@ -137,6 +140,7 @@ function getHPState(hp) {
   if (hp > 0)  return { emoji:"🔴", label:"Exhausted", xpMult:0.5  };
   return              { emoji:"💀", label:"Broken",    xpMult:0.25 };
 }
+function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
 // ===== API =====
 async function notionGet(path) {
@@ -144,28 +148,21 @@ async function notionGet(path) {
   const res = await fetch(`${apiBase}/api${path}`, { method:"GET" });
   return res.ok ? res.json() : null;
 }
-
 async function notionPost(path, body) {
   if (!apiBase) return null;
   const res = await fetch(`${apiBase}/api${path}`, {
-    method: "POST",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify(body),
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body),
   });
   return res.ok ? res.json() : null;
 }
-
 async function notionPatch(path, body) {
   if (!apiBase) return null;
   const res = await fetch(`${apiBase}/api${path}`, {
-    method: "PATCH",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify(body),
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body),
   });
   return res.ok ? res.json() : null;
 }
 
-// ===== RENDER HELPERS =====
 function checkIcon() {
   return `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>`;
 }
@@ -183,15 +180,13 @@ async function loadGameState() {
       properties: {
         Name:             { title:[{ text:{ content:"OAT" } }] },
         HP:               { number:100 },
-        "XP STR":         { number:0 },
-        "XP INT":         { number:0 },
-        "XP CHA":         { number:0 },
-        "XP ORD":         { number:0 },
+        "XP STR":         { number:0 }, "XP INT": { number:0 },
+        "XP CHA":         { number:0 }, "XP ORD": { number:0 },
         "Total XP":       { number:0 },
         Level:            { number:1 },
         Streak:           { number:0 },
-        "Marathon Tier":  { number:1 },
-        "Marathon Total": { number:0 },
+        Coins:            { number:0 },
+        "Marathon Tier":  { number:1 }, "Marathon Total": { number:0 },
         "Weekly km":      { number:0 },
         "Week Start":     { date:{ start: getWeekStart(todayStr) } },
         "Saving Total":   { number:0 },
@@ -205,9 +200,7 @@ async function loadGameState() {
   parseGameState(page.properties);
   await applyDailyDrain();
   await checkMarathonWeek();
-  renderCharacter();
-  renderMarathon();
-  renderSaving();
+  renderAll();
 }
 
 function parseGameState(props) {
@@ -220,6 +213,7 @@ function parseGameState(props) {
     totalXp:       props["Total XP"]?.number   ?? 0,
     level:         props.Level?.number         ?? 1,
     streak:        props.Streak?.number        ?? 0,
+    coins:         props.Coins?.number         ?? 0,
     lastActive:    props["Last Active"]?.date?.start ?? null,
     marathonTier:  props["Marathon Tier"]?.number  ?? 1,
     marathonTotal: props["Marathon Total"]?.number ?? 0,
@@ -245,6 +239,7 @@ async function saveGameState(updates = {}) {
     "Total XP":       { number: Math.max(0, gameState.totalXp) },
     Level:            { number: gameState.level },
     Streak:           { number: Math.max(0, gameState.streak) },
+    Coins:            { number: Math.max(0, gameState.coins || 0) },
     "Marathon Tier":  { number: gameState.marathonTier },
     "Marathon Total": { number: Math.max(0, gameState.marathonTotal) },
     "Weekly km":      { number: Math.max(0, gameState.weeklyKm) },
@@ -254,9 +249,14 @@ async function saveGameState(updates = {}) {
   if (gameState.weekStart)  props["Week Start"]  = { date:{ start: gameState.weekStart } };
 
   await notionPatch(`/pages/${gameStatePageId}`, { properties: props });
+  renderAll();
+}
+
+function renderAll() {
   renderCharacter();
   renderMarathon();
   renderSaving();
+  renderCoins();
 }
 
 async function applyDailyDrain() {
@@ -264,15 +264,11 @@ async function applyDailyDrain() {
   const drainKey = `oat_drain_${todayStr}`;
   if (localStorage.getItem(drainKey)) return;
   localStorage.setItem(drainKey, "1");
-
   if (gameState.lastActive && gameState.lastActive < todayStr) {
-    const last     = new Date(gameState.lastActive + "T00:00:00");
-    const diffDays = Math.max(0, Math.floor((today - last) / 86400000) - 1);
+    const diffDays = Math.max(0, Math.floor((today - new Date(gameState.lastActive + "T00:00:00")) / 86400000) - 1);
     if (diffDays > 0) {
       gameState.hp = Math.max(0, gameState.hp - HP_DRAIN_PER_DAY * diffDays);
-      await notionPatch(`/pages/${gameStatePageId}`, {
-        properties: { HP:{ number: gameState.hp } },
-      });
+      await notionPatch(`/pages/${gameStatePageId}`, { properties:{ HP:{ number: gameState.hp } } });
     }
   }
 }
@@ -290,14 +286,12 @@ async function checkMarathonWeek() {
   if (advTier && wkm >= advTier.km) newTier = Math.min(7, gameState.marathonTier + 1);
   else if (wkm < prevTier.km)       newTier = Math.max(1, gameState.marathonTier - 1);
 
-  const bonusXP    = MARATHON_TIERS[newTier - 1].bonus;
+  const bonusXP = MARATHON_TIERS[newTier - 1].bonus;
   const tierChanged = newTier !== gameState.marathonTier;
-
   gameState.marathonTier = newTier;
-  gameState.weeklyKm     = 0;
-  gameState.weekStart    = curWeekStart;
+  gameState.weeklyKm = 0;
+  gameState.weekStart = curWeekStart;
   if (bonusXP > 0) { gameState.totalXp += bonusXP; gameState.xpStr += bonusXP; }
-
   await saveGameState({});
   if (tierChanged) {
     const t = MARATHON_TIERS[newTier - 1];
@@ -305,111 +299,157 @@ async function checkMarathonWeek() {
   }
 }
 
+// ===== XP & COIN HELPERS =====
+
 function addHabitXP(key, checked) {
   if (!gameState) return 0;
   const meta = HABIT_META[key];
   if (!meta || !meta.stat || !meta.xp) return 0;
-
-  const sk         = statKey(meta.stat);
-  const storageKey = `oat_hxp_${todayStr}_${key}`;
-
+  const sk = statKey(meta.stat);
+  const sKey = `oat_hxp_${todayStr}_${key}`;
   if (checked) {
     const applied = Math.round(meta.xp * getHPState(gameState.hp).xpMult);
-    localStorage.setItem(storageKey, applied);
+    localStorage.setItem(sKey, applied);
     if (sk) gameState[sk] = (gameState[sk] || 0) + applied;
     gameState.totalXp = (gameState.totalXp || 0) + applied;
     return applied;
   } else {
-    const prev = parseInt(localStorage.getItem(storageKey) || meta.xp);
-    localStorage.removeItem(storageKey);
+    const prev = parseInt(localStorage.getItem(sKey) || meta.xp);
+    localStorage.removeItem(sKey);
     if (sk) gameState[sk] = Math.max(0, (gameState[sk] || 0) - prev);
-    gameState.totalXp     = Math.max(0, (gameState.totalXp || 0) - prev);
+    gameState.totalXp = Math.max(0, (gameState.totalXp || 0) - prev);
     return -prev;
   }
 }
 
+function addHabitCoins(key, checked) {
+  if (!gameState) return 0;
+  const meta = HABIT_META[key];
+  if (!meta || !meta.coins) return 0;
+  const sKey = `oat_coins_${todayStr}_${key}`;
+  if (checked) {
+    localStorage.setItem(sKey, meta.coins);
+    gameState.coins = (gameState.coins || 0) + meta.coins;
+    return meta.coins;
+  } else {
+    const prev = parseInt(localStorage.getItem(sKey) || 0);
+    localStorage.removeItem(sKey);
+    gameState.coins = Math.max(0, (gameState.coins || 0) - prev);
+    return -prev;
+  }
+}
+
+function addNumXPAndCoins(key, oldVal, newVal) {
+  if (!gameState) return { xp:0, coins:0 };
+  const meta = HABIT_META[key];
+  const sk = statKey(meta.stat);
+  const oldXP    = Math.floor(oldVal / meta.per) * meta.xpPer;
+  const newXP    = Math.floor(newVal / meta.per) * meta.xpPer;
+  const xpDelta  = newXP - oldXP;
+  const oldCoins = meta.coinsPer ? Math.floor(oldVal / meta.per) * meta.coinsPer : 0;
+  const newCoins = meta.coinsPer ? Math.floor(newVal / meta.per) * meta.coinsPer : 0;
+  const coinDelta = newCoins - oldCoins;
+  if (xpDelta !== 0 && sk) {
+    gameState[sk]     = Math.max(0, (gameState[sk] || 0) + xpDelta);
+    gameState.totalXp = Math.max(0, (gameState.totalXp || 0) + xpDelta);
+  }
+  if (coinDelta !== 0) {
+    gameState.coins = Math.max(0, (gameState.coins || 0) + coinDelta);
+  }
+  return { xp: xpDelta, coins: coinDelta };
+}
+
 function checkPerfectDay(props) {
   if (!gameState) return 0;
-  const core    = ["8 hr. Sleep","Water 2 lt.","Reading","Content","Cook","No Coffee"];
-  const coreDone    = core.every(h => props[h]?.checkbox === true);
-  const hasExercise = props["Weight Training"]?.checkbox === true ||
-                      (props["Run km"]?.number || 0) > 0 ||
-                      (props["Cardio min"]?.number || 0) > 0;
-  const pdKey   = `oat_pd_${todayStr}`;
-  const wasDone = localStorage.getItem(pdKey);
+  const core     = ["8 hr. Sleep","Water 2 lt.","Reading","Content","Cook","No Coffee"];
+  const coreDone = core.every(h => props[h]?.checkbox === true);
+  const hasEx    = props["Weight Training"]?.checkbox === true ||
+                   (props["Run km"]?.number || 0) > 0 ||
+                   (props["Cardio min"]?.number || 0) > 0;
+  const pdKey = `oat_pd_${todayStr}`;
+  const was   = localStorage.getItem(pdKey);
 
-  if (coreDone && hasExercise && !wasDone) {
+  if (coreDone && hasEx && !was) {
     localStorage.setItem(pdKey, "1");
     gameState.totalXp += PERFECT_DAY_BONUS;
-    gameState.xpStr   += 13; gameState.xpInt  += 13;
-    gameState.xpCha   += 12; gameState.xpOrd  += 12;
-    showToast(`🌟 Perfect Day! +${PERFECT_DAY_BONUS} XP`);
+    gameState.xpStr += 13; gameState.xpInt += 13;
+    gameState.xpCha += 12; gameState.xpOrd += 12;
+    gameState.coins = (gameState.coins || 0) + PERFECT_DAY_COINS;
+    showToast(`🌟 Perfect Day! +${PERFECT_DAY_BONUS} XP +${PERFECT_DAY_COINS} 🪙`);
     return PERFECT_DAY_BONUS;
   }
-  if ((!coreDone || !hasExercise) && wasDone) {
+  if ((!coreDone || !hasEx) && was) {
     localStorage.removeItem(pdKey);
     gameState.totalXp = Math.max(0, gameState.totalXp - PERFECT_DAY_BONUS);
     gameState.xpStr   = Math.max(0, gameState.xpStr - 13);
     gameState.xpInt   = Math.max(0, gameState.xpInt - 13);
     gameState.xpCha   = Math.max(0, gameState.xpCha - 12);
     gameState.xpOrd   = Math.max(0, gameState.xpOrd - 12);
+    gameState.coins   = Math.max(0, (gameState.coins || 0) - PERFECT_DAY_COINS);
     return -PERFECT_DAY_BONUS;
   }
   return 0;
 }
 
 function checkStreakUpdate() {
-  if (!gameState || gameState._streakUpdated) return {};
-  if (gameState.lastActive === todayStr) return {};
+  if (!gameState || gameState._streakUpdated || gameState.lastActive === todayStr) return {};
   gameState._streakUpdated = true;
   const updates = { lastActive: todayStr };
   if (!gameState.lastActive) {
     updates.streak = 1;
   } else {
-    const diffDays = Math.round((today - new Date(gameState.lastActive + "T00:00:00")) / 86400000);
-    updates.streak = diffDays === 1 ? (gameState.streak || 0) + 1 : 1;
+    const diff = Math.round((today - new Date(gameState.lastActive + "T00:00:00")) / 86400000);
+    updates.streak = diff === 1 ? (gameState.streak || 0) + 1 : 1;
   }
   return updates;
 }
 
-function checkVitaminHPBonus(props) {
-  const schedule   = isWeekend ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
-  const allDone    = schedule.every(v => props[v.key]?.checkbox === true);
-  const vitKey     = `oat_vhp_${todayStr}`;
-  const wasApplied = localStorage.getItem(vitKey);
-  if (allDone && !wasApplied) { localStorage.setItem(vitKey, "1"); return 10; }
-  if (!allDone && wasApplied) { localStorage.removeItem(vitKey);   return -10; }
-  return 0;
+function checkVitaminBonuses(props) {
+  const schedule = isWeekend ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
+  const allDone  = schedule.every(v => props[v.key]?.checkbox === true);
+
+  const hpKey   = `oat_vhp_${todayStr}`;
+  const coinKey = `oat_vcoin_${todayStr}`;
+  let hpDelta = 0, coinDelta = 0;
+
+  if (allDone && !localStorage.getItem(hpKey)) {
+    localStorage.setItem(hpKey, "1"); hpDelta = 10;
+  } else if (!allDone && localStorage.getItem(hpKey)) {
+    localStorage.removeItem(hpKey); hpDelta = -10;
+  }
+  if (allDone && !localStorage.getItem(coinKey)) {
+    localStorage.setItem(coinKey, "1"); coinDelta = VITAMIN_COINS;
+  } else if (!allDone && localStorage.getItem(coinKey)) {
+    localStorage.removeItem(coinKey); coinDelta = -VITAMIN_COINS;
+  }
+  return { hpDelta, coinDelta };
 }
 
-// ===== RENDER CHARACTER =====
+// ===== RENDER =====
+
 function renderCharacter() {
   if (!gameState) return;
   const level   = Math.floor(gameState.totalXp / XP_PER_LEVEL) + 1;
   const xpInLv  = gameState.totalXp % XP_PER_LEVEL;
-  const xpPct   = (xpInLv / XP_PER_LEVEL) * 100;
   const hp      = Math.round(gameState.hp);
   const hpState = getHPState(hp);
-  const hpPct   = (hp / HP_MAX) * 100;
   const hpColor = hp > 80 ? "var(--green)" : hp > 50 ? "var(--amber)" : hp > 20 ? "var(--orange)" : "var(--red)";
 
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set("char-level",    `Lv.${level}`);
-  set("char-title",    getLevelTitle(level));
-  set("xp-label",      `${xpInLv.toLocaleString()} / ${XP_PER_LEVEL.toLocaleString()} XP`);
-  set("hp-value-label",`${hp}/100`);
-  set("hp-state-label",`${hpState.emoji} ${hpState.label}`);
-  set("stat-str",      gameState.xpStr);
-  set("stat-int",      gameState.xpInt);
-  set("stat-cha",      gameState.xpCha);
-  set("stat-ord",      gameState.xpOrd);
-  set("char-streak",   gameState.streak > 0 ? `🔥 Streak ${gameState.streak} วัน` : "Streak 0 วัน — เริ่มเลย!");
+  setEl("char-level",    `Lv.${level}`);
+  setEl("char-title",    getLevelTitle(level));
+  setEl("xp-label",      `${xpInLv.toLocaleString()} / ${XP_PER_LEVEL.toLocaleString()} XP`);
+  setEl("hp-value-label",`${hp}/100`);
+  setEl("hp-state-label",`${hpState.emoji} ${hpState.label}`);
+  setEl("stat-str",      gameState.xpStr);
+  setEl("stat-int",      gameState.xpInt);
+  setEl("stat-cha",      gameState.xpCha);
+  setEl("stat-ord",      gameState.xpOrd);
+  setEl("char-streak",   gameState.streak > 0 ? `🔥 Streak ${gameState.streak} วัน` : "Streak 0 วัน — เริ่มเลย!");
 
   const xpBar = document.getElementById("xp-bar");
-  if (xpBar) xpBar.style.width = `${xpPct.toFixed(1)}%`;
-
+  if (xpBar) xpBar.style.width = `${((xpInLv / XP_PER_LEVEL) * 100).toFixed(1)}%`;
   const hpBar = document.getElementById("hp-bar");
-  if (hpBar) { hpBar.style.width = `${Math.max(0, hpPct)}%`; hpBar.style.background = hpColor; }
+  if (hpBar) { hpBar.style.width = `${Math.max(0, (hp / HP_MAX) * 100)}%`; hpBar.style.background = hpColor; }
 }
 
 function renderMarathon() {
@@ -419,12 +459,11 @@ function renderMarathon() {
   const wkm      = gameState.weeklyKm || 0;
   const pct      = Math.min(100, (wkm / tier.km) * 100);
 
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set("marathon-tier-badge",  `${tier.badge} ${tier.name}`);
-  set("marathon-week-km",     wkm.toFixed(1));
-  set("marathon-week-target", tier.km);
-  set("marathon-total-km",    `สะสม ${(gameState.marathonTotal || 0).toFixed(1)} km`);
-  set("marathon-next-tier",   nextTier && nextTier.tier > tier.tier ? `⬆️ Advance: ${nextTier.km} km/week` : "🏆 Max Tier!");
+  setEl("marathon-tier-badge",  `${tier.badge} ${tier.name}`);
+  setEl("marathon-week-km",     wkm.toFixed(1));
+  setEl("marathon-week-target", tier.km);
+  setEl("marathon-total-km",    `สะสม ${(gameState.marathonTotal || 0).toFixed(1)} km`);
+  setEl("marathon-next-tier",   nextTier && nextTier.tier > tier.tier ? `⬆️ Advance: ${nextTier.km} km/week` : "🏆 Max Tier!");
 
   const bar = document.getElementById("marathon-week-bar");
   if (bar) { bar.style.width = `${pct}%`; bar.style.background = pct >= 100 ? "var(--green)" : "var(--blue)"; }
@@ -434,19 +473,76 @@ function renderSaving() {
   if (!gameState) return;
   const total = gameState.savingTotal || 0;
   const cups  = Math.round(total / SAVING_PER_CUP);
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set("saving-total", `฿${total.toLocaleString()}`);
-  set("saving-cups",  `${cups} แก้ว × ฿${SAVING_PER_CUP}`);
+  setEl("saving-total", `฿${total.toLocaleString()}`);
+  setEl("saving-cups",  `${cups} แก้ว × ฿${SAVING_PER_CUP}`);
+}
+
+function renderCoins() {
+  if (!gameState) return;
+  const coins = gameState.coins || 0;
+  setEl("coin-balance",       coins.toLocaleString());
+  setEl("coin-balance-badge", `${coins} 🪙`);
+
+  const el = document.getElementById("rewards-list");
+  if (!el) return;
+
+  let html = "";
+  for (const reward of REWARDS) {
+    const canAfford = coins >= reward.cost;
+    html += `
+      <div class="reward-row${!canAfford ? " locked" : ""}">
+        <span class="reward-icon">${reward.icon}</span>
+        <div class="reward-info">
+          <span class="reward-name">${reward.name}</span>
+          <span class="reward-cost-label">${reward.cost} 🪙</span>
+        </div>
+        <button class="redeem-btn" onclick="showRedeemModal('${reward.id}')" ${!canAfford ? "disabled" : ""}>
+          Redeem
+        </button>
+      </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ===== REDEEM MODAL =====
+
+function showRedeemModal(rewardId) {
+  const reward = REWARDS.find(r => r.id === rewardId);
+  if (!reward || !gameState) return;
+  if ((gameState.coins || 0) < reward.cost) {
+    showToast(`Coins ไม่พอ (มี ${gameState.coins || 0} 🪙)`, "error");
+    return;
+  }
+  pendingReward = reward;
+  const remaining = (gameState.coins || 0) - reward.cost;
+  setEl("modal-reward-icon", reward.icon);
+  setEl("modal-reward-name", reward.name);
+  setEl("modal-reward-cost", `ใช้ ${reward.cost} 🪙`);
+  setEl("modal-reward-after",`เหลือ ${remaining} 🪙`);
+  document.getElementById("redeem-modal").style.display = "flex";
+}
+
+async function confirmRedeem() {
+  if (!pendingReward || !gameState) return;
+  document.getElementById("redeem-modal").style.display = "none";
+  gameState.coins = Math.max(0, (gameState.coins || 0) - pendingReward.cost);
+  await saveGameState({ coins: gameState.coins });
+  showToast(`${pendingReward.icon} Redeemed: ${pendingReward.name}!`);
+  pendingReward = null;
+}
+
+function cancelRedeem() {
+  document.getElementById("redeem-modal").style.display = "none";
+  pendingReward = null;
 }
 
 // ===== HABITS =====
+
 async function loadHabits() {
   const el   = document.getElementById("habit-list");
   const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
-    filter: { property:"Date", date:{ equals: todayStr } },
-    page_size: 1,
+    filter: { property:"Date", date:{ equals: todayStr } }, page_size:1,
   });
-
   if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
 
   let page = data.results[0];
@@ -460,7 +556,6 @@ async function loadHabits() {
     });
   }
   if (!page) { el.innerHTML = `<div class="empty">สร้าง entry ไม่ได้</div>`; return; }
-
   todayHabitPageId = page.id;
   renderHabits(page.properties);
 }
@@ -474,8 +569,8 @@ function countHabitsDone(props) {
 
 function renderHabits(props) {
   const el  = document.getElementById("habit-list");
-  let html  = "";
   const total = HABIT_CHECKS.length + HABIT_NUMS.length;
+  let html = "";
 
   for (const key of HABIT_CHECKS) {
     const meta    = HABIT_META[key];
@@ -485,6 +580,7 @@ function renderHabits(props) {
     if (meta.hpRecover) chips += `<span class="xp-chip hp-chip">HP +${meta.hpRecover}</span>`;
     if (meta.hpBonus)   chips += `<span class="xp-chip hp-chip">HP +${meta.hpBonus}</span>`;
     if (meta.saving)    chips += `<span class="xp-chip save-chip">฿+${meta.saving}</span>`;
+    if (meta.coins)     chips += `<span class="xp-chip coin-chip">+${meta.coins} 🪙</span>`;
     html += `
       <div class="check-row${checked?" checked":""}" data-type="habit" data-key="${key}" data-checked="${checked}">
         <div class="check-box">${checkIcon()}</div>
@@ -508,6 +604,7 @@ function renderHabits(props) {
           <span class="num-unit">${unit}</span>
         </div>
         <span class="xp-chip">${meta.stat} +${meta.xpPer}/${meta.per}${unit}</span>
+        ${meta.coinsPer ? `<span class="xp-chip coin-chip">+${meta.coinsPer} 🪙/${meta.per}${unit}</span>` : ""}
       </div>`;
   }
 
@@ -532,42 +629,45 @@ async function toggleHabit(row) {
   row.classList.toggle("checked", newVal);
 
   const res = await notionPatch(`/pages/${todayHabitPageId}`, {
-    properties: { [key]: { checkbox: newVal } },
+    properties: { [key]:{ checkbox: newVal } },
   });
   if (!res) {
-    row.dataset.checked = !newVal;
-    row.classList.toggle("checked", !newVal);
-    showToast("บันทึกไม่สำเร็จ", "error");
-    return;
+    row.dataset.checked = !newVal; row.classList.toggle("checked", !newVal);
+    showToast("บันทึกไม่สำเร็จ", "error"); return;
   }
 
-  const meta    = HABIT_META[key];
-  const updates = { ...checkStreakUpdate() };
-  const xpDelta = addHabitXP(key, newVal);
+  const meta     = HABIT_META[key];
+  const updates  = { ...checkStreakUpdate() };
+  const xpDelta  = addHabitXP(key, newVal);
+  const coinDelta = addHabitCoins(key, newVal);
 
   let hpDelta = 0;
   if (meta.hpRecover) hpDelta += newVal ?  meta.hpRecover : -meta.hpRecover;
   if (meta.hpBonus)   hpDelta += newVal ?  meta.hpBonus   : -meta.hpBonus;
-  if (hpDelta !== 0) {
-    gameState.hp = Math.min(HP_MAX, Math.max(0, (gameState.hp || 0) + hpDelta));
-    updates.hp   = gameState.hp;
-  }
+  if (hpDelta !== 0)  { gameState.hp = Math.min(HP_MAX, Math.max(0, (gameState.hp||0) + hpDelta)); updates.hp = gameState.hp; }
+
   if (meta.saving) {
-    gameState.savingTotal = Math.max(0, (gameState.savingTotal || 0) + (newVal ? meta.saving : -meta.saving));
+    gameState.savingTotal = Math.max(0, (gameState.savingTotal||0) + (newVal ? meta.saving : -meta.saving));
     updates.savingTotal   = gameState.savingTotal;
   }
 
   updates.totalXp = gameState.totalXp;
+  updates.coins   = gameState.coins;
   const sk = statKey(meta.stat);
   if (sk) updates[sk] = gameState[sk];
 
   let toast = newVal
-    ? `${meta.icon} ${meta.label}${Math.abs(xpDelta) > 0 ? ` +${Math.abs(xpDelta)} ${meta.stat}` : ""}${hpDelta > 0 ? ` +${hpDelta}HP` : ""}${meta.saving ? ` 💰+฿${meta.saving}` : ""}`
+    ? [
+        `${meta.icon} ${meta.label}`,
+        Math.abs(xpDelta) > 0  ? `+${Math.abs(xpDelta)} ${meta.stat}` : "",
+        hpDelta > 0            ? `+${hpDelta}HP`                        : "",
+        meta.saving            ? `฿+${meta.saving}`                     : "",
+        coinDelta > 0          ? `+${coinDelta} 🪙`                     : "",
+      ].filter(Boolean).join("  ")
     : `↩ ${meta.label}`;
   showToast(toast);
 
   await saveGameState(updates);
-
   const pdDelta = checkPerfectDay(res.properties);
   if (pdDelta !== 0) await saveGameState({});
 
@@ -584,27 +684,22 @@ async function updateHabitNumber(input) {
   input.dataset.prev = newVal;
 
   const res = await notionPatch(`/pages/${todayHabitPageId}`, {
-    properties: { [key]: { number: newVal > 0 ? newVal : null } },
+    properties: { [key]:{ number: newVal > 0 ? newVal : null } },
   });
   if (!res) { showToast("บันทึกไม่สำเร็จ", "error"); return; }
 
   const meta    = HABIT_META[key];
   const sk      = statKey(meta.stat);
-  const oldXP   = Math.floor(oldVal / meta.per) * meta.xpPer;
-  const newXP   = Math.floor(newVal / meta.per) * meta.xpPer;
-  const xpDelta = newXP - oldXP;
+  const { xp: xpDelta, coins: coinDelta } = addNumXPAndCoins(key, oldVal, newVal);
   const updates = { ...checkStreakUpdate() };
 
-  if (xpDelta !== 0 && sk) {
-    gameState[sk]     = Math.max(0, (gameState[sk] || 0) + xpDelta);
-    gameState.totalXp = Math.max(0, (gameState.totalXp || 0) + xpDelta);
-    updates[sk]       = gameState[sk];
-    updates.totalXp   = gameState.totalXp;
-  }
+  if (sk)       { updates[sk]   = gameState[sk]; updates.totalXp = gameState.totalXp; }
+  if (coinDelta !== 0) { updates.coins = gameState.coins; }
+
   if (meta.marathon) {
     const kmDelta = newVal - oldVal;
-    gameState.marathonTotal = Math.max(0, (gameState.marathonTotal || 0) + kmDelta);
-    gameState.weeklyKm      = Math.max(0, (gameState.weeklyKm || 0) + kmDelta);
+    gameState.marathonTotal = Math.max(0, (gameState.marathonTotal||0) + kmDelta);
+    gameState.weeklyKm      = Math.max(0, (gameState.weeklyKm||0) + kmDelta);
     updates.marathonTotal   = gameState.marathonTotal;
     updates.weeklyKm        = gameState.weeklyKm;
   }
@@ -613,9 +708,9 @@ async function updateHabitNumber(input) {
   const pdDelta = checkPerfectDay(res.properties);
   if (pdDelta !== 0) await saveGameState({});
 
-  const row = input.closest(".num-row");
-  if (row) row.classList.toggle("done", newVal > 0);
-  if (xpDelta > 0) showToast(`${meta.icon} +${xpDelta} STR`);
+  const numRow = input.closest(".num-row");
+  if (numRow) numRow.classList.toggle("done", newVal > 0);
+  if (xpDelta > 0) showToast(`${meta.icon} +${xpDelta} STR${coinDelta > 0 ? `  +${coinDelta} 🪙` : ""}`);
 
   document.getElementById("habit-count").textContent =
     `${countHabitsDone(res.properties)}/${HABIT_CHECKS.length + HABIT_NUMS.length}`;
@@ -625,17 +720,15 @@ async function updateHabitNumber(input) {
 // ===== HABIT SUMMARY 7 วัน =====
 async function loadHabitSummary() {
   const el = document.getElementById("habit-summary");
-  const sevenAgo = new Date(today);
-  sevenAgo.setDate(sevenAgo.getDate() - 6);
+  const sevenAgo = new Date(today); sevenAgo.setDate(sevenAgo.getDate() - 6);
   const startStr = sevenAgo.toISOString().slice(0, 10);
 
   const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
     filter: { and:[
-      { property:"Date", date:{ on_or_after:  startStr } },
+      { property:"Date", date:{ on_or_after: startStr } },
       { property:"Date", date:{ on_or_before: todayStr } },
     ]},
-    sorts: [{ property:"Date", direction:"ascending" }],
-    page_size: 7,
+    sorts: [{ property:"Date", direction:"ascending" }], page_size:7,
   });
   if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
 
@@ -644,11 +737,9 @@ async function loadHabitSummary() {
     const d = p.properties?.Date?.date?.start;
     if (d) dayMap[d] = p.properties;
   }
-
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
+    const d = new Date(today); d.setDate(d.getDate() - i);
     days.push(d.toISOString().slice(0, 10));
   }
 
@@ -659,16 +750,15 @@ async function loadHabitSummary() {
 
   let html = "";
   for (const { key, label, num } of allHabits) {
-    let count = 0;
-    let dots  = "";
+    let count = 0, dots = "";
     days.forEach(day => {
       const props   = dayMap[day];
-      const checked = num ? (props?.[key]?.number || 0) > 0 : props?.[key]?.checkbox || false;
+      const checked = num ? (props?.[key]?.number||0) > 0 : props?.[key]?.checkbox||false;
       if (checked) count++;
       dots += `<span class="dot ${checked?"done":"miss"}${day===todayStr?" today-dot":""}" title="${day}"></span>`;
     });
     const pct   = count / 7;
-    const emoji = pct >= 1 ? "🔥" : pct >= 0.71 ? "🟢" : pct >= 0.43 ? "🟡" : count > 0 ? "🔴" : "⚪";
+    const emoji = pct>=1?"🔥":pct>=0.71?"🟢":pct>=0.43?"🟡":count>0?"🔴":"⚪";
     html += `
       <div class="summary-row">
         <div class="summary-label">${label}</div>
@@ -682,40 +772,32 @@ async function loadHabitSummary() {
 // ===== VITAMIN STREAK =====
 async function loadVitaminStreak() {
   const data = await notionPost(`/databases/${DB.vitaminLog}/query`, {
-    sorts: [{ property:"Date", direction:"descending" }],
-    page_size: 60,
+    sorts:[{ property:"Date", direction:"descending" }], page_size:60,
   });
   if (!data || !data.results) return;
 
   const vitMap = {};
   for (const p of data.results) {
-    const dateVal = p.properties?.Date?.title?.map(t => t.plain_text).join("") || "";
+    const dateVal = p.properties?.Date?.title?.map(t=>t.plain_text).join("") || "";
     if (!dateVal) continue;
-    const d        = new Date(dateVal);
-    const isWE     = d.getDay() === 0 || d.getDay() === 6;
-    const schedule = isWE ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
-    vitMap[dateVal] = schedule.every(v => p.properties?.[v.key]?.checkbox === true);
+    const d  = new Date(dateVal);
+    const sc = (d.getDay()===0||d.getDay()===6) ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
+    vitMap[dateVal] = sc.every(v => p.properties?.[v.key]?.checkbox===true);
   }
 
   let streak = 0;
   const cur = new Date(today);
   while (true) {
-    const ds = cur.toISOString().slice(0, 10);
-    if (vitMap[ds] === true) { streak++; cur.setDate(cur.getDate() - 1); } else break;
+    const ds = cur.toISOString().slice(0,10);
+    if (vitMap[ds]===true) { streak++; cur.setDate(cur.getDate()-1); } else break;
   }
 
   const el = document.getElementById("vit-streak");
   if (!el) return;
-  let emoji, msg;
-  if (streak === 0)     { emoji = "😐"; msg = "เริ่มวันนี้เลย"; }
-  else if (streak < 4)  { emoji = "🙂"; msg = "กำลังไปได้ดี"; }
-  else if (streak < 7)  { emoji = "😊"; msg = "ทำต่อไป!"; }
-  else if (streak < 14) { emoji = "💪"; msg = "สัปดาห์แรกผ่านแล้ว"; }
-  else if (streak < 30) { emoji = "😄"; msg = "วินัยดีมาก"; }
-  else                  { emoji = "🏆"; msg = "ยอดเยี่ยม!"; }
-
-  const barPct   = Math.min(streak / 30 * 100, 100);
-  const barColor = streak < 4 ? "var(--red)" : streak < 7 ? "var(--amber)" : "var(--green)";
+  const msgs = [[0,"😐","เริ่มวันนี้เลย"],[4,"🙂","กำลังไปได้ดี"],[7,"😊","ทำต่อไป!"],[14,"💪","สัปดาห์แรกผ่านแล้ว"],[30,"😄","วินัยดีมาก"],[Infinity,"🏆","ยอดเยี่ยม!"]];
+  const [,emoji,msg] = msgs.slice().reverse().find(([m]) => streak>=m)||msgs[0];
+  const barPct   = Math.min(streak/30*100,100);
+  const barColor = streak<4?"var(--red)":streak<7?"var(--amber)":"var(--green)";
   el.innerHTML = `
     <div class="streak-display">
       <span class="streak-emoji">${emoji}</span>
@@ -732,20 +814,18 @@ async function loadVitaminStreak() {
 async function loadVitamins() {
   const el   = document.getElementById("vit-list");
   const data = await notionPost(`/databases/${DB.vitaminLog}/query`, {
-    filter: { property:"Date", title:{ equals: todayStr } },
-    page_size: 1,
+    filter: { property:"Date", title:{ equals: todayStr } }, page_size:1,
   });
-  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
+  if (!data || !data.results) { el.innerHTML=`<div class="empty">โหลดไม่ได้</div>`; return; }
 
   let page = data.results[0];
   if (!page) {
     page = await notionPost("/pages", {
       parent: { database_id: DB.vitaminLog },
-      properties: { Date:{ title:[{ text:{ content: todayStr } }] } },
+      properties: { Date:{ title:[{ text:{ content:todayStr } }] } },
     });
   }
-  if (!page) { el.innerHTML = `<div class="empty">สร้าง entry ไม่ได้</div>`; return; }
-
+  if (!page) { el.innerHTML=`<div class="empty">สร้าง entry ไม่ได้</div>`; return; }
   todayVitPageId = page.id;
   renderVitamins(page.properties);
 }
@@ -753,10 +833,9 @@ async function loadVitamins() {
 function renderVitamins(props) {
   const el       = document.getElementById("vit-list");
   const schedule = isWeekend ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
-  let done = 0, html = "";
-
+  let done=0, html="";
   for (const vit of schedule) {
-    const checked = props[vit.key]?.checkbox || false;
+    const checked = props[vit.key]?.checkbox||false;
     if (checked) done++;
     html += `
       <div class="check-row${checked?" checked":""}" data-type="vit" data-key="${vit.key}" data-checked="${checked}">
@@ -765,7 +844,6 @@ function renderVitamins(props) {
         <span class="vit-time">${vit.time}</span>
       </div>`;
   }
-
   el.innerHTML = html;
   document.getElementById("vit-count").textContent = `${done}/${schedule.length}`;
   el.querySelectorAll(".check-row[data-type=vit]").forEach(row => {
@@ -777,20 +855,19 @@ async function toggleVitamin(row) {
   if (!todayVitPageId) return;
   const key    = row.dataset.key;
   const newVal = row.dataset.checked !== "true";
-  row.dataset.checked = newVal;
-  row.classList.toggle("checked", newVal);
+  row.dataset.checked = newVal; row.classList.toggle("checked", newVal);
 
-  const res = await notionPatch(`/pages/${todayVitPageId}`, {
-    properties: { [key]:{ checkbox: newVal } },
-  });
+  const res = await notionPatch(`/pages/${todayVitPageId}`, { properties:{ [key]:{ checkbox:newVal } } });
   if (res) {
     showToast(newVal ? `💊 ${key}` : `↩ ${key}`);
     renderVitamins(res.properties);
-    const hpDelta = checkVitaminHPBonus(res.properties);
-    if (hpDelta !== 0 && gameState && gameStatePageId) {
-      gameState.hp = Math.min(HP_MAX, Math.max(0, gameState.hp + hpDelta));
-      await saveGameState({ hp: gameState.hp });
-      if (hpDelta > 0) showToast(`💊 วิตามินครบ! +${hpDelta} HP`);
+    const { hpDelta, coinDelta } = checkVitaminBonuses(res.properties);
+    if ((hpDelta !== 0 || coinDelta !== 0) && gameState && gameStatePageId) {
+      if (hpDelta !== 0) gameState.hp = Math.min(HP_MAX, Math.max(0, gameState.hp + hpDelta));
+      if (coinDelta !== 0) gameState.coins = Math.max(0, (gameState.coins||0) + coinDelta);
+      await saveGameState({ hp: gameState.hp, coins: gameState.coins });
+      if (hpDelta > 0 || coinDelta > 0)
+        showToast(`💊 วิตามินครบ!${hpDelta>0?` +${hpDelta}HP`:""}${coinDelta>0?` +${coinDelta} 🪙`:""}`);
     }
   } else {
     showToast("บันทึกไม่สำเร็จ", "error");
@@ -801,15 +878,13 @@ async function toggleVitamin(row) {
 async function loadRoutines() {
   const el   = document.getElementById("routine-list");
   const data = await notionPost(`/databases/${DB.routines}/query`, {
-    sorts: [{ property:"Next Due", direction:"ascending" }],
-    page_size: 50,
+    sorts:[{ property:"Next Due", direction:"ascending" }], page_size:50,
   });
-  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
-
+  if (!data || !data.results) { el.innerHTML=`<div class="empty">โหลดไม่ได้</div>`; return; }
   routineData = data.results;
-  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).toISOString().slice(0,10);
   renderRoutines(routineData.filter(r => {
-    const nd = r.properties["Next Due"]?.formula?.date?.start || null;
+    const nd = r.properties["Next Due"]?.formula?.date?.start||null;
     return nd && nd <= endOfMonth;
   }));
   loadFocus();
@@ -818,157 +893,137 @@ async function loadRoutines() {
 function renderRoutines(routines) {
   const el = document.getElementById("routine-list");
   if (!routines.length) {
-    el.innerHTML = `<div class="empty">ไม่มี Routines ที่ต้องทำเดือนนี้ 🎉</div>`;
-    document.getElementById("routine-count").textContent = "0";
-    return;
+    el.innerHTML=`<div class="empty">ไม่มี Routines ที่ต้องทำเดือนนี้ 🎉</div>`;
+    document.getElementById("routine-count").textContent="0"; return;
   }
-
-  let html = "";
+  let html="";
   for (const r of routines) {
-    const p       = r.properties;
-    const name    = p.Name?.title?.map(t=>t.plain_text).join("") || "";
-    const cat     = p.Category?.select?.name || "อื่นๆ";
-    const freq    = p.Frequency?.select?.name || "";
-    const nextDue = p["Next Due"]?.formula?.date?.start || null;
-    const diff    = daysDiff(nextDue);
-    let nextLabel = "ยังไม่ได้ตั้งวัน", nextClass = "";
+    const p=r.properties;
+    const name=p.Name?.title?.map(t=>t.plain_text).join("")||"";
+    const cat=p.Category?.select?.name||"อื่นๆ";
+    const freq=p.Frequency?.select?.name||"";
+    const nextDue=p["Next Due"]?.formula?.date?.start||null;
+    const diff=daysDiff(nextDue);
+    let nextLabel="ยังไม่ได้ตั้งวัน",nextClass="";
     if (nextDue) {
-      if (diff < 0)       { nextLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; nextClass = "overdue"; }
-      else if (diff === 0){ nextLabel = "ครบวันนี้"; nextClass = "soon"; }
-      else if (diff <= 7) { nextLabel = `อีก ${diff} วัน (${thaiDate(nextDue)})`; nextClass = "soon"; }
-      else                { nextLabel = thaiDate(nextDue); }
+      if (diff<0)       { nextLabel=`เลยกำหนด ${Math.abs(diff)} วัน`; nextClass="overdue"; }
+      else if (diff===0){ nextLabel="ครบวันนี้"; nextClass="soon"; }
+      else if (diff<=7) { nextLabel=`อีก ${diff} วัน (${thaiDate(nextDue)})`; nextClass="soon"; }
+      else              { nextLabel=thaiDate(nextDue); }
     }
-    html += `
+    html+=`
       <div class="routine-row" data-id="${r.id}">
         <div class="routine-info">
           <div class="routine-name"><span class="cat-chip cat-${cat}">${cat}</span>${name}</div>
           <div class="routine-next ${nextClass}">${nextLabel}</div>
         </div>
         <span class="routine-freq">${freqLabel(freq)}</span>
-        <button class="done-btn" onclick="markRoutineDone('${r.id}', this)">Done</button>
+        <button class="done-btn" onclick="markRoutineDone('${r.id}',this)">Done</button>
       </div>`;
   }
-  el.innerHTML = html;
-  document.getElementById("routine-count").textContent = routines.length;
+  el.innerHTML=html;
+  document.getElementById("routine-count").textContent=routines.length;
 }
 
 function calcNextDue(freq, fromDate) {
-  const d = new Date(fromDate + "T00:00:00");
-  if (freq === "weekly")  d.setDate(d.getDate() + 7);
-  else if (freq === "monthly")  d.setMonth(d.getMonth() + 1);
-  else if (freq === "3months")  d.setMonth(d.getMonth() + 3);
-  else if (freq === "6months")  d.setMonth(d.getMonth() + 6);
-  else if (freq === "yearly")   d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
+  const d=new Date(fromDate+"T00:00:00");
+  if (freq==="weekly") d.setDate(d.getDate()+7);
+  else if (freq==="monthly") d.setMonth(d.getMonth()+1);
+  else if (freq==="3months") d.setMonth(d.getMonth()+3);
+  else if (freq==="6months") d.setMonth(d.getMonth()+6);
+  else if (freq==="yearly")  d.setFullYear(d.getFullYear()+1);
+  return d.toISOString().slice(0,10);
 }
 
 async function markRoutineDone(pageId, btn) {
-  btn.disabled = true; btn.textContent = "...";
-  const routine     = routineData.find(r => r.id === pageId);
-  const freq        = routine?.properties?.Frequency?.select?.name || "";
-  const nextDueDate = freq ? calcNextDue(freq, todayStr) : null;
-  const props       = { "Last Done": { date:{ start: todayStr } } };
-  if (nextDueDate) props["Next Due Date"] = { date:{ start: nextDueDate } };
-  const res = await notionPatch(`/pages/${pageId}`, { properties: props });
+  btn.disabled=true; btn.textContent="...";
+  const r=routineData.find(r=>r.id===pageId);
+  const freq=r?.properties?.Frequency?.select?.name||"";
+  const nd=freq?calcNextDue(freq,todayStr):null;
+  const props={"Last Done":{date:{start:todayStr}}};
+  if (nd) props["Next Due Date"]={date:{start:nd}};
+  const res=await notionPatch(`/pages/${pageId}`,{properties:props});
   if (res) { showToast("✅ บันทึกแล้ว"); await loadRoutines(); }
-  else { showToast("บันทึกไม่สำเร็จ", "error"); btn.disabled = false; btn.textContent = "Done"; }
+  else { showToast("บันทึกไม่สำเร็จ","error"); btn.disabled=false; btn.textContent="Done"; }
 }
 
 // ===== TASKS =====
 async function loadTasks() {
-  const el   = document.getElementById("task-list");
-  const data = await notionPost(`/databases/${DB.tasks}/query`, {
-    filter: { property:"Done", checkbox:{ equals: false } },
-    sorts:  [{ property:"Due Date", direction:"ascending" }],
-    page_size: 20,
+  const el=document.getElementById("task-list");
+  const data=await notionPost(`/databases/${DB.tasks}/query`,{
+    filter:{property:"Done",checkbox:{equals:false}},
+    sorts:[{property:"Due Date",direction:"ascending"}], page_size:20,
   });
-  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
-
-  taskData = data.results;
-  loadFocus();
-
-  const visible = data.results.filter(r => {
-    const due = r.properties["Due Date"]?.date?.start;
-    return due && daysDiff(due) <= 3;
-  });
-
+  if (!data||!data.results) { el.innerHTML=`<div class="empty">โหลดไม่ได้</div>`; return; }
+  taskData=data.results; loadFocus();
+  const visible=data.results.filter(r=>{const due=r.properties["Due Date"]?.date?.start; return due&&daysDiff(due)<=3;});
   if (!visible.length) {
-    el.innerHTML = `<div class="empty">ไม่มี Tasks ใน 3 วันข้างหน้า 🎉</div>`;
-    document.getElementById("task-count").textContent = "0";
-    return;
+    el.innerHTML=`<div class="empty">ไม่มี Tasks ใน 3 วันข้างหน้า 🎉</div>`;
+    document.getElementById("task-count").textContent="0"; return;
   }
-
-  let html = "";
+  let html="";
   for (const r of visible) {
-    const p       = r.properties;
-    const name    = p.Name?.title?.map(t=>t.plain_text).join("") || "";
-    const dueDate = p["Due Date"]?.date?.start || null;
-    const status  = p.Status?.select?.name || "";
-    const diff    = daysDiff(dueDate);
-    let dueLabel  = thaiDate(dueDate), dueClass = "";
-    if (diff < 0)       { dueLabel = `เลยกำหนด ${Math.abs(diff)} วัน`; dueClass = "overdue"; }
-    else if (diff === 0){ dueLabel = "Due วันนี้"; dueClass = "soon"; }
-    const statusClass = status === "IN PROGRESS" ? "in-progress" : "todo";
-    const statusLabel = status === "IN PROGRESS" ? "In Progress" : (status || "To Do");
-    html += `
+    const p=r.properties;
+    const name=p.Name?.title?.map(t=>t.plain_text).join("")||"";
+    const dueDate=p["Due Date"]?.date?.start||null;
+    const status=p.Status?.select?.name||"";
+    const diff=daysDiff(dueDate);
+    let dueLabel=thaiDate(dueDate),dueClass="";
+    if (diff<0) { dueLabel=`เลยกำหนด ${Math.abs(diff)} วัน`; dueClass="overdue"; }
+    else if (diff===0) { dueLabel="Due วันนี้"; dueClass="soon"; }
+    const sc=status==="IN PROGRESS"?"in-progress":"todo";
+    const sl=status==="IN PROGRESS"?"In Progress":(status||"To Do");
+    html+=`
       <div class="task-row" data-id="${r.id}">
         <div class="task-info">
           <div class="task-name">${name}</div>
           <div class="task-meta ${dueClass}">${dueLabel}</div>
         </div>
-        <span class="status-chip ${statusClass}">${statusLabel}</span>
-        <button class="done-btn" onclick="markTaskDone('${r.id}', this)">Done</button>
+        <span class="status-chip ${sc}">${sl}</span>
+        <button class="done-btn" onclick="markTaskDone('${r.id}',this)">Done</button>
       </div>`;
   }
-  el.innerHTML = html;
-  document.getElementById("task-count").textContent = visible.length;
+  el.innerHTML=html;
+  document.getElementById("task-count").textContent=visible.length;
 }
 
 async function markTaskDone(pageId, btn) {
-  btn.disabled = true; btn.textContent = "...";
-  const res = await notionPatch(`/pages/${pageId}`, { properties:{ Done:{ checkbox: true } } });
+  btn.disabled=true; btn.textContent="...";
+  const res=await notionPatch(`/pages/${pageId}`,{properties:{Done:{checkbox:true}}});
   if (res) { showToast("✅ Task เสร็จแล้ว"); await loadTasks(); loadFocus(); }
-  else { showToast("บันทึกไม่สำเร็จ", "error"); btn.disabled = false; btn.textContent = "Done"; }
+  else { showToast("บันทึกไม่สำเร็จ","error"); btn.disabled=false; btn.textContent="Done"; }
 }
 
 // ===== FOCUS NOW =====
 function loadFocus() {
-  const el    = document.getElementById("focus-list");
-  const items = [];
-
+  const el=document.getElementById("focus-list");
+  const items=[];
   for (const r of taskData) {
-    const p       = r.properties;
-    const name    = p.Name?.title?.map(t=>t.plain_text).join("") || "";
-    const dueDate = p["Due Date"]?.date?.start || null;
-    const diff    = daysDiff(dueDate);
-    if (diff === null || diff > 3) continue;
-    items.push({ name, diff, meta: diff < 0 ? `Task — เลยกำหนด ${Math.abs(diff)} วัน` :
-      diff === 0 ? "Task — Due วันนี้" : `Task — Due อีก ${diff} วัน (${thaiDate(dueDate)})` });
+    const p=r.properties;
+    const name=p.Name?.title?.map(t=>t.plain_text).join("")||"";
+    const due=p["Due Date"]?.date?.start||null;
+    const diff=daysDiff(due);
+    if (diff===null||diff>3) continue;
+    items.push({name,diff,meta:diff<0?`Task — เลยกำหนด ${Math.abs(diff)} วัน`:diff===0?"Task — Due วันนี้":`Task — Due อีก ${diff} วัน (${thaiDate(due)})`});
   }
-
   for (const r of routineData) {
-    const p       = r.properties;
-    const name    = p.Name?.title?.map(t=>t.plain_text).join("") || "";
-    const nextDue = p["Next Due"]?.formula?.date?.start || null;
-    const diff    = daysDiff(nextDue);
-    if (diff === null || diff > 3) continue;
-    items.push({ name, diff, meta: diff < 0 ? `Routine — เลย ${Math.abs(diff)} วัน` :
-      diff === 0 ? "Routine — ครบวันนี้" : `Routine — อีก ${diff} วัน` });
+    const p=r.properties;
+    const name=p.Name?.title?.map(t=>t.plain_text).join("")||"";
+    const nd=p["Next Due"]?.formula?.date?.start||null;
+    const diff=daysDiff(nd);
+    if (diff===null||diff>3) continue;
+    items.push({name,diff,meta:diff<0?`Routine — เลย ${Math.abs(diff)} วัน`:diff===0?"Routine — ครบวันนี้":`Routine — อีก ${diff} วัน`});
   }
-
-  items.sort((a, b) => a.diff - b.diff);
-
+  items.sort((a,b)=>a.diff-b.diff);
   if (!items.length) {
-    el.innerHTML = `<div class="empty">ไม่มีงานเร่งด่วน 🎉</div>`;
-    document.getElementById("focus-count").textContent = "0";
-    return;
+    el.innerHTML=`<div class="empty">ไม่มีงานเร่งด่วน 🎉</div>`;
+    document.getElementById("focus-count").textContent="0"; return;
   }
-
-  let html = "";
+  let html="";
   for (const item of items) {
-    const cls   = item.diff < 0 ? "overdue" : item.diff === 0 ? "today" : "soon";
-    const badge = item.diff < 0 ? "เลยกำหนด" : item.diff === 0 ? "วันนี้" : `${item.diff}d`;
-    html += `
+    const cls=item.diff<0?"overdue":item.diff===0?"today":"soon";
+    const badge=item.diff<0?"เลยกำหนด":item.diff===0?"วันนี้":`${item.diff}d`;
+    html+=`
       <div class="focus-card ${cls}">
         <div class="focus-dot"></div>
         <div class="focus-info">
@@ -978,51 +1033,46 @@ function loadFocus() {
         <span class="focus-badge">${badge}</span>
       </div>`;
   }
-  el.innerHTML = html;
-  document.getElementById("focus-count").textContent = items.length;
+  el.innerHTML=html;
+  document.getElementById("focus-count").textContent=items.length;
 }
 
 // ===== HEADER DATE =====
 function setHeaderDate() {
-  const d      = new Date();
-  const days   = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
-  const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  document.getElementById("header-date").textContent =
-    `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
+  const d=new Date();
+  const days=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+  const months=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  document.getElementById("header-date").textContent=`${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`;
 }
 
 // ===== THEME =====
 function initTheme() {
-  const saved = localStorage.getItem("oat_theme") || "dark";
-  document.documentElement.dataset.theme = saved;
-  updateThemeIcon(saved);
+  const saved=localStorage.getItem("oat_theme")||"dark";
+  document.documentElement.dataset.theme=saved; updateThemeIcon(saved);
 }
 function updateThemeIcon(t) {
-  document.getElementById("icon-sun").style.display  = t === "dark"  ? "block" : "none";
-  document.getElementById("icon-moon").style.display = t === "light" ? "block" : "none";
+  document.getElementById("icon-sun").style.display  = t==="dark"  ? "block" : "none";
+  document.getElementById("icon-moon").style.display = t==="light" ? "block" : "none";
 }
 document.getElementById("theme-btn").addEventListener("click", () => {
-  const cur  = document.documentElement.dataset.theme;
-  const next = cur === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = next;
-  localStorage.setItem("oat_theme", next);
-  updateThemeIcon(next);
+  const cur=document.documentElement.dataset.theme;
+  const next=cur==="dark"?"light":"dark";
+  document.documentElement.dataset.theme=next;
+  localStorage.setItem("oat_theme",next); updateThemeIcon(next);
 });
 
 // ===== SETUP =====
 document.getElementById("setup-btn").addEventListener("click", () => {
-  const banner = document.getElementById("setup-banner");
-  banner.style.display = banner.style.display === "none" ? "block" : "none";
-  document.getElementById("api-url-input").value = apiBase;
+  const b=document.getElementById("setup-banner");
+  b.style.display=b.style.display==="none"?"block":"none";
+  document.getElementById("api-url-input").value=apiBase;
 });
 document.getElementById("setup-save").addEventListener("click", () => {
-  const val = document.getElementById("api-url-input").value.trim().replace(/\/$/, "");
+  const val=document.getElementById("api-url-input").value.trim().replace(/\/$/,"");
   if (!val) return;
-  apiBase = val;
-  localStorage.setItem("oat_api_base", val);
-  document.getElementById("setup-banner").style.display = "none";
-  showToast("✅ บันทึก API URL แล้ว");
-  loadAll();
+  apiBase=val; localStorage.setItem("oat_api_base",val);
+  document.getElementById("setup-banner").style.display="none";
+  showToast("✅ บันทึก API URL แล้ว"); loadAll();
 });
 
 // ===== REFRESH =====
@@ -1031,11 +1081,10 @@ document.getElementById("refresh-btn").addEventListener("click", loadAll);
 // ===== INIT =====
 function loadAll() {
   if (!apiBase) {
-    document.getElementById("setup-banner").style.display = "block";
-    ["focus-list","habit-list","vit-list","routine-list","task-list"].forEach(id => {
-      document.getElementById(id).innerHTML = `<div class="empty">ยังไม่ได้ตั้งค่า API URL</div>`;
-    });
-    return;
+    document.getElementById("setup-banner").style.display="block";
+    ["focus-list","habit-list","vit-list","routine-list","task-list"].forEach(id=>{
+      document.getElementById(id).innerHTML=`<div class="empty">ยังไม่ได้ตั้งค่า API URL</div>`;
+    }); return;
   }
   loadGameState();
   loadHabits();

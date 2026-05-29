@@ -121,6 +121,21 @@
     </div>
   </div>
 
+  <!-- Coins & Rewards -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">🪙 Coins</span>
+      <span class="section-count" id="coin-balance-badge">0 🪙</span>
+    </div>
+    <div class="card">
+      <div class="coin-balance-row">
+        <span class="coin-big" id="coin-balance">0</span>
+        <span class="coin-unit">Coins</span>
+      </div>
+      <div id="rewards-list"></div>
+    </div>
+  </div>
+
   <!-- Focus Now -->
   <div class="section">
     <div class="section-header">
@@ -200,6 +215,20 @@
 </div><!-- /container -->
 
 <div id="toast"></div>
+
+<!-- Redeem Modal -->
+<div id="redeem-modal" class="modal-overlay" style="display:none" onclick="cancelRedeem()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-reward-icon" id="modal-reward-icon"></div>
+    <div class="modal-reward-name" id="modal-reward-name"></div>
+    <div class="modal-reward-cost" id="modal-reward-cost"></div>
+    <div class="modal-reward-after" id="modal-reward-after"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="cancelRedeem()">ยกเลิก</button>
+      <button class="modal-confirm" onclick="confirmRedeem()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>
