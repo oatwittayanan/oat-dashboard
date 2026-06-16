@@ -10,6 +10,7 @@ const DB = {
   tasks:        "1ca0a744-f603-801f-9fe7-e1989b735f8f",
   gameState:    "36e0a744-f603-811c-9d82-cbd84c5cbd25",
   runLog:       "36e0a744-f603-8188-8446-f117e233d374",
+  trainerPlan:  "3810a744-f603-81b3-9191-df22489be16c",
 };
 
 const VITAMIN_SCHEDULE = {
@@ -31,6 +32,12 @@ const VITAMIN_SCHEDULE = {
 // ===== HABIT CONSTANTS =====
 const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Weight Training","Reading","Content","Cook","No Coffee"];
 const HABIT_NUMS   = ["Run km","Cardio min"];
+
+// รายละเอียดการวิ่งเสริม (ไม่มี XP/coins — ใช้ให้ Steve เช็ค Zone 2 เท่านั้น)
+const RUN_DETAIL_FIELDS = [
+  { key:"Run min",    icon:"⏱️", label:"เวลาวิ่ง", unit:"min", step:"1" },
+  { key:"Run Avg HR", icon:"❤️", label:"HR เฉลี่ย", unit:"bpm", step:"1" },
+];
 
 const HABIT_META = {
   "8 hr. Sleep":     { icon:"😴", label:"8 hr. Sleep",    hpRecover:20, coins:2 },
@@ -608,17 +615,50 @@ function renderHabits(props) {
       </div>`;
   }
 
+  for (const f of RUN_DETAIL_FIELDS) {
+    const val = props[f.key]?.number ?? 0;
+    html += `
+      <div class="num-row run-detail-row${val > 0 ? " done" : ""}">
+        <div class="num-label">${f.icon} ${f.label}</div>
+        <div class="num-input-wrap">
+          <input class="num-input run-detail-input" type="number" inputmode="decimal"
+            data-key="${f.key}" data-prev="${val}"
+            value="${val || ""}" placeholder="0" min="0" step="${f.step}" />
+          <span class="num-unit">${f.unit}</span>
+        </div>
+      </div>`;
+  }
+
   el.innerHTML = html;
   document.getElementById("habit-count").textContent = `${countHabitsDone(props)}/${total}`;
 
   el.querySelectorAll(".check-row[data-type=habit]").forEach(row => {
     row.addEventListener("click", () => toggleHabit(row));
   });
-  el.querySelectorAll(".num-input").forEach(input => {
+  el.querySelectorAll(".num-input:not(.run-detail-input)").forEach(input => {
     input.addEventListener("change", () => updateHabitNumber(input));
     input.addEventListener("blur",   () => updateHabitNumber(input));
     input.addEventListener("click",  e  => e.stopPropagation());
   });
+  el.querySelectorAll(".run-detail-input").forEach(input => {
+    input.addEventListener("change", () => updateRunDetail(input));
+    input.addEventListener("blur",   () => updateRunDetail(input));
+    input.addEventListener("click",  e  => e.stopPropagation());
+  });
+}
+
+async function updateRunDetail(input) {
+  if (!todayHabitPageId) return;
+  const key    = input.dataset.key;
+  const newVal = parseFloat(input.value) || 0;
+  if (newVal === (parseFloat(input.dataset.prev) || 0)) return;
+  input.dataset.prev = newVal;
+
+  const res = await notionPatch(`/pages/${todayHabitPageId}`, {
+    properties: { [key]: { number: newVal > 0 ? newVal : null } },
+  });
+  if (!res) { showToast("บันทึกไม่สำเร็จ", "error"); return; }
+  input.closest(".run-detail-row")?.classList.toggle("done", newVal > 0);
 }
 
 async function toggleHabit(row) {
@@ -947,6 +987,47 @@ async function markRoutineDone(pageId, btn) {
   else { showToast("บันทึกไม่สำเร็จ","error"); btn.disabled=false; btn.textContent="Done"; }
 }
 
+// ===== TRAINER PLAN (Steve) =====
+async function loadTrainerPlan() {
+  const el = document.getElementById("trainer-plan-card");
+  const data = await notionPost(`/databases/${DB.trainerPlan}/query`, {
+    sorts: [{ property: "Week Start", direction: "descending" }], page_size: 1,
+  });
+  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
+  if (!data.results.length) {
+    el.innerHTML = `<div class="empty">ยังไม่มีแผน — รัน /steve เพื่อให้ Steve วางแผนสัปดาห์นี้</div>`;
+    setEl("trainer-plan-km", "—");
+    return;
+  }
+  renderTrainerPlan(data.results[0].properties);
+}
+
+function richText(prop) {
+  return (prop?.rich_text || []).map(t => t.plain_text).join("") || "—";
+}
+
+function renderTrainerPlan(props) {
+  const el = document.getElementById("trainer-plan-card");
+  const weekStart = props["Week Start"]?.title?.map(t => t.plain_text).join("") || "—";
+  const kmTarget = props["Weekly KM Target"]?.number;
+  setEl("trainer-plan-km", kmTarget != null ? `${kmTarget} km/สัปดาห์` : "—");
+
+  el.innerHTML = `
+    <div class="trainer-plan-row">
+      <span class="trainer-plan-label">🏃 Training Focus</span>
+      <span class="trainer-plan-value">${richText(props["Training Focus"])}</span>
+      <div class="trainer-plan-week">สัปดาห์ ${weekStart}</div>
+    </div>
+    <div class="trainer-plan-row">
+      <span class="trainer-plan-label">🍽️ Nutrition Note</span>
+      <span class="trainer-plan-value">${richText(props["Nutrition Note"])}</span>
+    </div>
+    <div class="trainer-plan-row">
+      <span class="trainer-plan-label">✅ Key Actions</span>
+      <span class="trainer-plan-value">${richText(props["Key Actions"])}</span>
+    </div>`;
+}
+
 // ===== TASKS =====
 async function loadTasks() {
   const el=document.getElementById("task-list");
@@ -1093,6 +1174,7 @@ function loadAll() {
   loadVitaminStreak();
   loadRoutines();
   loadTasks();
+  loadTrainerPlan();
 }
 
 initTheme();
