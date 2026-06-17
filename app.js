@@ -995,8 +995,7 @@ async function loadTrainerPlan() {
   });
   if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
   if (!data.results.length) {
-    el.innerHTML = `<div class="empty">ยังไม่มีแผน — รัน /steve เพื่อให้ Steve วางแผนสัปดาห์นี้</div>`;
-    setEl("trainer-plan-km", "—");
+    el.innerHTML = `<div class="empty">ยังไม่มีคำแนะนำ — รัน /steve เพื่อให้ Steve ดูให้</div>`;
     return;
   }
   renderTrainerPlan(data.results[0].properties);
@@ -1006,21 +1005,14 @@ function richText(prop) {
   return (prop?.rich_text || []).map(t => t.plain_text).join("") || "—";
 }
 
+// แสดงแค่คำแนะนำสุขภาพสั้นๆ บรรทัดเดียว (โอ๊ตขอ 2026-06-17): ช่วงนี้ขาดด้านไหน + ควรโฟกัสอะไร
+// เนื้อหามาจาก field "Key Actions" ของ Notion ที่ Steve เขียนเป็น health-focus nudge
 function renderTrainerPlan(props) {
   const el = document.getElementById("trainer-plan-card");
-  const weekStart = props["Week Start"]?.title?.map(t => t.plain_text).join("") || "—";
-  const kmTarget = props["Weekly KM Target"]?.number;
-  setEl("trainer-plan-km", kmTarget != null ? `${kmTarget} km/สัปดาห์` : "—");
-
   el.innerHTML = `
-    <div class="trainer-plan-row">
-      <span class="trainer-plan-label">🏋️ สัปดาห์นี้ออกอะไร</span>
-      <span class="trainer-plan-value">${richText(props["Training Focus"])}</span>
-      <div class="trainer-plan-week">สัปดาห์ ${weekStart}</div>
-    </div>
-    <div class="trainer-plan-row">
-      <span class="trainer-plan-label">📈 ต้องปรับปรุง</span>
-      <span class="trainer-plan-value">${richText(props["Key Actions"])}</span>
+    <div class="trainer-plan-focus">
+      <span class="trainer-plan-focus-icon">🎯</span>
+      <span class="trainer-plan-focus-text">${richText(props["Key Actions"])}</span>
     </div>`;
 }
 

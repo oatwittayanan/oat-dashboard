@@ -340,6 +340,15 @@ body {
   font-size: 11px; color: var(--fg-muted); margin-top: 2px;
   font-family: var(--font-mono);
 }
+.trainer-plan-focus {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 16px;
+}
+.trainer-plan-focus-icon { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+.trainer-plan-focus-text {
+  font-size: 14px; color: var(--fg); line-height: 1.6;
+  white-space: pre-wrap;
+}
 
 /* ---- Setup banner ---- */
 #setup-banner {
