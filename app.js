@@ -30,7 +30,7 @@ const VITAMIN_SCHEDULE = {
 };
 
 // ===== HABIT CONSTANTS =====
-const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Weight Training","Reading","Content","Cook","No Coffee"];
+const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Weight Training","Reading","Content","Cook","No Coffee","No Nail Biting","No Fried Food"];
 const HABIT_NUMS   = ["Run km","Cardio min"];
 
 // รายละเอียดการวิ่งเสริม (ไม่มี XP/coins — ใช้ให้ Steve เช็ค Zone 2 เท่านั้น)
@@ -47,6 +47,8 @@ const HABIT_META = {
   "Content":         { icon:"📹", label:"Content",          stat:"CHA", xp:15, coins:3 },
   "Cook":            { icon:"🍳", label:"ทำอาหารเอง",       stat:"ORD", xp:10, hpBonus:5, coins:2 },
   "No Coffee":       { icon:"☕", label:"ไม่ซื้อกาแฟ",      stat:"ORD", xp:10, saving:50, coins:2 },
+  "No Nail Biting":  { icon:"💅", label:"ไม่กัดเล็บ",       stat:"ORD", xp:10, coins:2 },
+  "No Fried Food":   { icon:"🥗", label:"ไม่กินของทอด",     stat:"ORD", xp:10, hpBonus:5, coins:2 },
   "Run km":          { icon:"🏃", label:"วิ่ง",             stat:"STR", xpPer:10, per:5, marathon:true, coinsPer:3 },
   "Cardio min":      { icon:"🚴", label:"Cardio",           stat:"STR", xpPer:5,  per:15, coinsPer:2 },
 };
@@ -87,7 +89,6 @@ const REWARDS = [
   { id:"cafe", icon:"☕", name:"Cafe",         cost:30  },
   { id:"beer", icon:"🍺", name:"Beer",          cost:50  },
   { id:"meal", icon:"🍽️", name:"Special Meal",  cost:70  },
-  { id:"maid", icon:"🧹", name:"จ้างแม่บ้าน",  cost:100 },
 ];
 
 // ===== STATE =====
