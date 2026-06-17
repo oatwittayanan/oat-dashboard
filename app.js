@@ -1014,16 +1014,12 @@ function renderTrainerPlan(props) {
 
   el.innerHTML = `
     <div class="trainer-plan-row">
-      <span class="trainer-plan-label">🏃 Training Focus</span>
+      <span class="trainer-plan-label">🏋️ สัปดาห์นี้ออกอะไร</span>
       <span class="trainer-plan-value">${richText(props["Training Focus"])}</span>
       <div class="trainer-plan-week">สัปดาห์ ${weekStart}</div>
     </div>
     <div class="trainer-plan-row">
-      <span class="trainer-plan-label">🍽️ Nutrition Note</span>
-      <span class="trainer-plan-value">${richText(props["Nutrition Note"])}</span>
-    </div>
-    <div class="trainer-plan-row">
-      <span class="trainer-plan-label">✅ Key Actions</span>
+      <span class="trainer-plan-label">📈 ต้องปรับปรุง</span>
       <span class="trainer-plan-value">${richText(props["Key Actions"])}</span>
     </div>`;
 }
