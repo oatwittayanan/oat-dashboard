@@ -147,6 +147,22 @@ body {
 .soon    .focus-badge { background: var(--blue-soft); color: var(--blue); }
 
 /* ---- Check row (Habit + Vitamin) ---- */
+.habit-group-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 6px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  color: var(--fg-muted); text-transform: none;
+  border-bottom: 1px solid var(--hairline);
+}
+.core-count {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  color: var(--amber);
+  background: var(--amber-soft); border: 1px solid var(--amber-line);
+  padding: 1px 8px; border-radius: 999px;
+}
+.core-count.full { color: var(--green); background: var(--green-soft); border-color: var(--green); }
+
 .check-row {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;

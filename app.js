@@ -30,7 +30,9 @@ const VITAMIN_SCHEDULE = {
 };
 
 // ===== HABIT CONSTANTS =====
-const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Weight Training","Reading","Content","Cook","No Coffee","No Nail Biting","No Fried Food"];
+// Core 6 = วินัยหลักที่โอ๊ตตั้งใจทำทุกวัน (เรียงขึ้นบนสุด + มีตัวนับแยก)
+const CORE_HABITS  = ["Creatine","Protein","Weight Training","8 hr. Sleep","Reading","Content"];
+const HABIT_CHECKS = ["Creatine","Protein","Weight Training","8 hr. Sleep","Reading","Content","Water 2 lt.","Cook","No Coffee","No Nail Biting","No Fried Food"];
 const HABIT_NUMS   = ["Run km","Cardio min"];
 
 // รายละเอียดการวิ่งเสริม (ไม่มี XP/coins — ใช้ให้ Steve เช็ค Zone 2 เท่านั้น)
@@ -40,6 +42,8 @@ const RUN_DETAIL_FIELDS = [
 ];
 
 const HABIT_META = {
+  "Creatine":        { icon:"💊", label:"Creatine",        stat:"STR", xp:10, coins:2 },
+  "Protein":         { icon:"🥤", label:"Protein 1 Scoop",  stat:"STR", xp:10, coins:2 },
   "8 hr. Sleep":     { icon:"😴", label:"8 hr. Sleep",    hpRecover:20, coins:2 },
   "Water 2 lt.":     { icon:"💧", label:"Water 2 lt.",    hpRecover:10, coins:1 },
   "Weight Training": { icon:"🏋️", label:"Weight Training", stat:"STR", xp:15, coins:3 },
@@ -575,26 +579,38 @@ function countHabitsDone(props) {
   return done;
 }
 
-function renderHabits(props) {
-  const el  = document.getElementById("habit-list");
-  const total = HABIT_CHECKS.length + HABIT_NUMS.length;
-  let html = "";
-
-  for (const key of HABIT_CHECKS) {
-    const meta    = HABIT_META[key];
-    const checked = props[key]?.checkbox ?? false;
-    let chips = "";
-    if (meta.xp)        chips += `<span class="xp-chip">${meta.stat} +${meta.xp}</span>`;
-    if (meta.hpRecover) chips += `<span class="xp-chip hp-chip">HP +${meta.hpRecover}</span>`;
-    if (meta.hpBonus)   chips += `<span class="xp-chip hp-chip">HP +${meta.hpBonus}</span>`;
-    if (meta.saving)    chips += `<span class="xp-chip save-chip">฿+${meta.saving}</span>`;
-    if (meta.coins)     chips += `<span class="xp-chip coin-chip">+${meta.coins} 🪙</span>`;
-    html += `
+function renderHabitCheck(key, props) {
+  const meta    = HABIT_META[key];
+  const checked = props[key]?.checkbox ?? false;
+  let chips = "";
+  if (meta.xp)        chips += `<span class="xp-chip">${meta.stat} +${meta.xp}</span>`;
+  if (meta.hpRecover) chips += `<span class="xp-chip hp-chip">HP +${meta.hpRecover}</span>`;
+  if (meta.hpBonus)   chips += `<span class="xp-chip hp-chip">HP +${meta.hpBonus}</span>`;
+  if (meta.saving)    chips += `<span class="xp-chip save-chip">฿+${meta.saving}</span>`;
+  if (meta.coins)     chips += `<span class="xp-chip coin-chip">+${meta.coins} 🪙</span>`;
+  return `
       <div class="check-row${checked?" checked":""}" data-type="habit" data-key="${key}" data-checked="${checked}">
         <div class="check-box">${checkIcon()}</div>
         <div class="check-label">${meta.icon} ${meta.label}</div>
         ${chips}
       </div>`;
+}
+
+function renderHabits(props) {
+  const el  = document.getElementById("habit-list");
+  const total = HABIT_CHECKS.length + HABIT_NUMS.length;
+  let html = "";
+
+  // ── Core 6: วินัยหลัก (ขึ้นบนสุด + ตัวนับแยก) ──
+  const coreDone = CORE_HABITS.filter(k => props[k]?.checkbox === true).length;
+  html += `<div class="habit-group-header">🎯 วินัยหลัก<span class="core-count${coreDone === CORE_HABITS.length ? " full" : ""}">${coreDone}/${CORE_HABITS.length}</span></div>`;
+  for (const key of CORE_HABITS) html += renderHabitCheck(key, props);
+
+  // ── habit อื่น ๆ ──
+  const others = HABIT_CHECKS.filter(k => !CORE_HABITS.includes(k));
+  if (others.length) {
+    html += `<div class="habit-group-header">อื่น ๆ</div>`;
+    for (const key of others) html += renderHabitCheck(key, props);
   }
 
   for (const key of HABIT_NUMS) {
