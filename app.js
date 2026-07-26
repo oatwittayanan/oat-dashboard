@@ -232,6 +232,8 @@ function parseGameState(props) {
     weeklyKm:      props["Weekly km"]?.number  ?? 0,
     weekStart:     props["Week Start"]?.date?.start ?? getWeekStart(todayStr),
     savingTotal:   props["Saving Total"]?.number ?? 0,
+    coffeeQuitSince:  props["Coffee Quit Since"]?.date?.start ?? null,
+    alcoholQuitSince: props["Alcohol Quit Since"]?.date?.start ?? null,
     _streakUpdated: false,
   };
 }
@@ -259,6 +261,8 @@ async function saveGameState(updates = {}) {
   };
   if (gameState.lastActive) props["Last Active"] = { date:{ start: gameState.lastActive } };
   if (gameState.weekStart)  props["Week Start"]  = { date:{ start: gameState.weekStart } };
+  if (gameState.coffeeQuitSince)  props["Coffee Quit Since"]  = { date:{ start: gameState.coffeeQuitSince } };
+  if (gameState.alcoholQuitSince) props["Alcohol Quit Since"] = { date:{ start: gameState.alcoholQuitSince } };
 
   await notionPatch(`/pages/${gameStatePageId}`, { properties: props });
   renderAll();
@@ -269,6 +273,7 @@ function renderAll() {
   renderMarathon();
   renderSaving();
   renderCoins();
+  renderQuitCounters();
 }
 
 async function applyDailyDrain() {
@@ -515,6 +520,60 @@ function renderCoins() {
   }
   el.innerHTML = html;
 }
+
+// ===== QUIT STREAK COUNTERS =====
+
+const QUIT_KEYS = {
+  coffee:  { stateKey:"coffeeQuitSince",  label:"หยุดกาแฟ" },
+  alcohol: { stateKey:"alcoholQuitSince", label:"หยุดแอลกอฮอล์" },
+};
+
+function formatQuitElapsed(sinceIso) {
+  if (!sinceIso) return null;
+  const start = new Date(sinceIso);
+  const diffMs = Math.max(0, Date.now() - start.getTime());
+  const totalMin = Math.floor(diffMs / 60000);
+  const days  = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const mins  = totalMin % 60;
+  return `${days} วัน ${hours} ชม. ${mins} นาที`;
+}
+
+function renderQuitCounters() {
+  if (!gameState) return;
+  for (const key of Object.keys(QUIT_KEYS)) {
+    const { stateKey } = QUIT_KEYS[key];
+    const el  = document.getElementById(`quit-${key}-time`);
+    const btn = document.getElementById(`quit-${key}-reset`);
+    if (!el) continue;
+    const since = gameState[stateKey];
+    const elapsed = formatQuitElapsed(since);
+    if (elapsed) {
+      el.textContent = elapsed;
+      el.classList.remove("unset");
+    } else {
+      el.textContent = "ยังไม่เริ่มนับ — กด Reset เพื่อเริ่ม";
+      el.classList.add("unset");
+    }
+    if (btn) btn.textContent = since ? "Reset" : "เริ่มนับ";
+  }
+}
+
+async function resetQuitCounter(key) {
+  const cfg = QUIT_KEYS[key];
+  if (!cfg || !gameState) return;
+  const hadStart = !!gameState[cfg.stateKey];
+  if (hadStart && !confirm(`รีเซ็ตตัวนับ "${cfg.label}" เป็น 0 เลยไหมคะ?`)) return;
+  const btn = document.getElementById(`quit-${key}-reset`);
+  if (btn) { btn.disabled = true; }
+  await saveGameState({ [cfg.stateKey]: new Date().toISOString() });
+  if (btn) { btn.disabled = false; }
+  showToast(`⏳ เริ่มนับ${cfg.label}ใหม่แล้ว`);
+}
+
+document.getElementById("quit-coffee-reset").addEventListener("click", () => resetQuitCounter("coffee"));
+document.getElementById("quit-alcohol-reset").addEventListener("click", () => resetQuitCounter("alcohol"));
+setInterval(renderQuitCounters, 60000);
 
 // ===== REDEEM MODAL =====
 

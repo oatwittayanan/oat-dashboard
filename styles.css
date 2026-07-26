@@ -466,6 +466,29 @@ body {
 .saving-amount { font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--green); }
 .saving-meta   { font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono); }
 
+/* ---- Quit Streak Counters ---- */
+.quit-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.quit-row:last-child { border-bottom: none; }
+.quit-info { flex: 1; min-width: 0; }
+.quit-name { font-size: 14px; font-weight: 500; }
+.quit-time {
+  font-size: 13px; color: var(--green); font-family: var(--font-mono);
+  font-weight: 600; margin-top: 3px;
+}
+.quit-time.unset { color: var(--fg-dim); font-weight: 400; }
+.quit-reset-btn {
+  background: none; border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm); padding: 6px 12px;
+  font-size: 12px; color: var(--fg-muted); cursor: pointer;
+  font-family: var(--font-sans); transition: all 0.15s; flex-shrink: 0;
+}
+.quit-reset-btn:hover { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+.quit-reset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 /* ---- XP / HP / Save chips on habits ---- */
 .xp-chip {
   font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px;
