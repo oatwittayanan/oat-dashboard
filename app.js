@@ -88,6 +88,17 @@ function thaiDate(d) {
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 }
 function dateStr(d) { return d instanceof Date ? d.toISOString().slice(0,10) : d; }
+// เลี่ยงปัญหา timezone ของเครื่อง client — คำนวณวันที่แบบ pure UTC-anchored จาก string "YYYY-MM-DD" ล้วนๆ
+function addDays(ds, n) {
+  const [y, m, d] = ds.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+function weekdayOf(ds) {
+  const [y, m, d] = ds.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
+}
 function freqLabel(f) {
   return { weekly:"ทุกสัปดาห์", monthly:"ทุกเดือน", "3months":"ทุก 3 เดือน",
            "6months":"ทุก 6 เดือน", yearly:"ทุกปี" }[f] || f;
@@ -360,8 +371,7 @@ async function toggleHabit(row) {
 // ===== HABIT SUMMARY 7 วัน =====
 async function loadHabitSummary() {
   const el = document.getElementById("habit-summary");
-  const sevenAgo = new Date(today); sevenAgo.setDate(sevenAgo.getDate() - 6);
-  const startStr = sevenAgo.toISOString().slice(0, 10);
+  const startStr = addDays(todayStr, -6);
 
   const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
     filter: { and:[
@@ -378,10 +388,7 @@ async function loadHabitSummary() {
     if (d) dayMap[d] = p.properties;
   }
   const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
-  }
+  for (let i = 6; i >= 0; i--) days.push(addDays(todayStr, -i));
 
   const trackedDays = days.filter(d => d >= HABIT_TRACKING_START);
 
@@ -414,9 +421,8 @@ async function loadHabitSummary() {
 
 // ===== WEEK CHART (สัปดาห์นี้ ทำได้กี่ %) =====
 function mondayOf(ds) {
-  const d = new Date(ds + "T00:00:00");
-  d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()));
-  return d.toISOString().slice(0, 10);
+  const dow = weekdayOf(ds); // 0=Sun..6=Sat
+  return addDays(ds, dow === 0 ? -6 : 1 - dow);
 }
 
 async function loadWeekChart() {
@@ -424,10 +430,7 @@ async function loadWeekChart() {
   if (!el) return;
   const monStr = mondayOf(todayStr);
   const weekDays = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monStr + "T00:00:00"); d.setDate(d.getDate() + i);
-    weekDays.push(d.toISOString().slice(0, 10));
-  }
+  for (let i = 0; i < 7; i++) weekDays.push(addDays(monStr, i));
   const sunStr = weekDays[6];
 
   const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
