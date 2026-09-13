@@ -31,6 +31,9 @@ const VITAMIN_SCHEDULE = {
 // ===== HABIT CONSTANTS (โฟกัสแค่ 6 ตัวที่สำคัญจริงๆ) =====
 const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Workout","Reading","Content","No Coffee"];
 
+// วันที่เริ่มระบบ Habit ชุดใหม่ (6 ตัว) — สรุป/กราฟไม่นับวันก่อนหน้านี้ (รีเซ็ตให้เริ่มนับจากวันนี้)
+const HABIT_TRACKING_START = "2026-09-13";
+
 const HABIT_META = {
   "8 hr. Sleep": { icon:"😴", label:"8 hr. Sleep" },
   "Water 2 lt.": { icon:"💧", label:"Water 2 lt." },
@@ -380,26 +383,95 @@ async function loadHabitSummary() {
     days.push(d.toISOString().slice(0, 10));
   }
 
+  const trackedDays = days.filter(d => d >= HABIT_TRACKING_START);
+
   let html = "";
   for (const key of HABIT_CHECKS) {
     const label = HABIT_META[key]?.label || key;
     let count = 0, dots = "";
     days.forEach(day => {
+      if (day < HABIT_TRACKING_START) {
+        dots += `<span class="dot na" title="${day} — ยังไม่เริ่มนับ"></span>`;
+        return;
+      }
       const props   = dayMap[day];
       const checked = props?.[key]?.checkbox || false;
       if (checked) count++;
       dots += `<span class="dot ${checked?"done":"miss"}${day===todayStr?" today-dot":""}" title="${day}"></span>`;
     });
-    const pct   = count / 7;
+    const total = trackedDays.length || 1;
+    const pct   = count / total;
     const emoji = pct>=1?"🔥":pct>=0.71?"🟢":pct>=0.43?"🟡":count>0?"🔴":"⚪";
     html += `
       <div class="summary-row">
         <div class="summary-label">${label}</div>
         <div class="summary-dots">${dots}</div>
-        <div class="summary-score">${count}/7 ${emoji}</div>
+        <div class="summary-score">${count}/${trackedDays.length} ${emoji}</div>
       </div>`;
   }
   el.innerHTML = html;
+}
+
+// ===== WEEK CHART (สัปดาห์นี้ ทำได้กี่ %) =====
+function mondayOf(ds) {
+  const d = new Date(ds + "T00:00:00");
+  d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()));
+  return d.toISOString().slice(0, 10);
+}
+
+async function loadWeekChart() {
+  const el = document.getElementById("week-chart");
+  if (!el) return;
+  const monStr = mondayOf(todayStr);
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monStr + "T00:00:00"); d.setDate(d.getDate() + i);
+    weekDays.push(d.toISOString().slice(0, 10));
+  }
+  const sunStr = weekDays[6];
+
+  const data = await notionPost(`/databases/${DB.habitTracker}/query`, {
+    filter: { and:[
+      { property:"Date", date:{ on_or_after: monStr } },
+      { property:"Date", date:{ on_or_before: sunStr } },
+    ]},
+    page_size: 7,
+  });
+  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
+
+  const dayMap = {};
+  for (const p of data.results) {
+    const d = p.properties?.Date?.date?.start;
+    if (d) dayMap[d] = p.properties;
+  }
+
+  const dayLabels = ["จ","อ","พ","พฤ","ศ","ส","อา"];
+  let barsHtml = "";
+  let validPct = [];
+  weekDays.forEach((day, i) => {
+    const inRange = day >= HABIT_TRACKING_START && day <= todayStr;
+    let pct = 0;
+    if (inRange) {
+      const props = dayMap[day] || {};
+      const done = HABIT_CHECKS.filter(k => props[k]?.checkbox === true).length;
+      pct = done / HABIT_CHECKS.length;
+      validPct.push(pct);
+    }
+    const heightPct = Math.round(pct * 100);
+    const barClass = !inRange ? "week-bar-na" : pct >= 1 ? "week-bar-full" : "";
+    barsHtml += `
+      <div class="week-bar-col${day===todayStr?" today":""}">
+        <div class="week-bar-track">
+          <div class="week-bar-fill ${barClass}" style="height:${inRange ? heightPct : 0}%"></div>
+        </div>
+        <div class="week-bar-label">${dayLabels[i]}</div>
+        <div class="week-bar-pct">${inRange ? heightPct+"%" : "—"}</div>
+      </div>`;
+  });
+
+  const weekPct = validPct.length ? Math.round((validPct.reduce((a,b)=>a+b,0) / validPct.length) * 100) : 0;
+  setEl("week-pct", `${weekPct}%`);
+  el.innerHTML = barsHtml;
 }
 
 // ===== VITAMIN STREAK =====
@@ -762,6 +834,7 @@ function loadAll() {
   loadGameState();
   loadHabits();
   loadHabitSummary();
+  loadWeekChart();
   loadVitamins();
   loadVitaminStreak();
   loadRoutines();
