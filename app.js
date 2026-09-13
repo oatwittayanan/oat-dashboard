@@ -1,4 +1,4 @@
-// OAT Dashboard — app.js v3 (Gamification + Coin System)
+// OAT Dashboard — app.js v4 (Habits + Cardio Log + Tasks/Routines + Content Stage Tracker)
 
 // ===== CONFIG =====
 const DEFAULT_API_BASE = "https://oat-notion-proxy.wittayanan-oat.workers.dev";
@@ -10,7 +10,6 @@ const DB = {
   tasks:        "1ca0a744-f603-801f-9fe7-e1989b735f8f",
   gameState:    "36e0a744-f603-811c-9d82-cbd84c5cbd25",
   runLog:       "36e0a744-f603-8188-8446-f117e233d374",
-  trainerPlan:  "3810a744-f603-81b3-9191-df22489be16c",
 };
 
 const VITAMIN_SCHEDULE = {
@@ -29,70 +28,35 @@ const VITAMIN_SCHEDULE = {
   ],
 };
 
-// ===== HABIT CONSTANTS =====
-// Core 6 = วินัยหลักที่โอ๊ตตั้งใจทำทุกวัน (เรียงขึ้นบนสุด + มีตัวนับแยก)
-const CORE_HABITS  = ["Creatine","Protein","Weight Training","8 hr. Sleep","Reading","Content"];
-const HABIT_CHECKS = ["Creatine","Protein","Weight Training","8 hr. Sleep","Reading","Content","Water 2 lt.","Cook","No Coffee","No Nail Biting","No Fried Food"];
-const HABIT_NUMS   = ["Run km","Cardio min"];
-
-// รายละเอียดการวิ่งเสริม (ไม่มี XP/coins — ใช้ให้ Steve เช็ค Zone 2 เท่านั้น)
-const RUN_DETAIL_FIELDS = [
-  { key:"Run min",    icon:"⏱️", label:"เวลาวิ่ง", unit:"min", step:"1" },
-  { key:"Run Avg HR", icon:"❤️", label:"HR เฉลี่ย", unit:"bpm", step:"1" },
-];
+// ===== HABIT CONSTANTS (โฟกัสแค่ 6 ตัวที่สำคัญจริงๆ) =====
+const HABIT_CHECKS = ["8 hr. Sleep","Water 2 lt.","Workout","Reading","Content","No Coffee"];
 
 const HABIT_META = {
-  "Creatine":        { icon:"💊", label:"Creatine",        stat:"STR", xp:10, coins:2 },
-  "Protein":         { icon:"🥤", label:"Protein 1 Scoop",  stat:"STR", xp:10, coins:2 },
-  "8 hr. Sleep":     { icon:"😴", label:"8 hr. Sleep",    hpRecover:20, coins:2 },
-  "Water 2 lt.":     { icon:"💧", label:"Water 2 lt.",    hpRecover:10, coins:1 },
-  "Weight Training": { icon:"🏋️", label:"Weight Training", stat:"STR", xp:15, coins:3 },
-  "Reading":         { icon:"📖", label:"Reading",          stat:"INT", xp:10, coins:2 },
-  "Content":         { icon:"📹", label:"Content",          stat:"CHA", xp:15, coins:3 },
-  "Cook":            { icon:"🍳", label:"ทำอาหารเอง",       stat:"ORD", xp:10, hpBonus:5, coins:2 },
-  "No Coffee":       { icon:"☕", label:"ไม่ซื้อกาแฟ",      stat:"ORD", xp:10, saving:50, coins:2 },
-  "No Nail Biting":  { icon:"💅", label:"ไม่กัดเล็บ",       stat:"ORD", xp:10, coins:2 },
-  "No Fried Food":   { icon:"🥗", label:"ไม่กินของทอด",     stat:"ORD", xp:10, hpBonus:5, coins:2 },
-  "Run km":          { icon:"🏃", label:"วิ่ง",             stat:"STR", xpPer:10, per:5, marathon:true, coinsPer:3 },
-  "Cardio min":      { icon:"🚴", label:"Cardio",           stat:"STR", xpPer:5,  per:15, coinsPer:2 },
+  "8 hr. Sleep": { icon:"😴", label:"8 hr. Sleep" },
+  "Water 2 lt.": { icon:"💧", label:"Water 2 lt." },
+  "Workout":     { icon:"🏋️", label:"Workout" },
+  "Reading":     { icon:"📖", label:"Reading" },
+  "Content":     { icon:"📹", label:"Content" },
+  "No Coffee":   { icon:"☕", label:"Coffee No-Buy", saving:50 },
 };
 
-// ===== GAME CONSTANTS =====
-const HP_DRAIN_PER_DAY   = 15;
-const HP_MAX             = 100;
-const XP_PER_LEVEL       = 1000;
-const PERFECT_DAY_BONUS  = 50;
-const PERFECT_DAY_COINS  = 10;
-const SAVING_PER_CUP     = 50;
-const VITAMIN_COINS      = 1;
-
-const MARATHON_TIERS = [
-  { tier:1, name:"Starter",    km:5,  badge:"🌱", bonus:0   },
-  { tier:2, name:"Jogger",     km:10, badge:"👟", bonus:50  },
-  { tier:3, name:"Runner",     km:15, badge:"🏃", bonus:100 },
-  { tier:4, name:"Pacer",      km:20, badge:"⚡", bonus:150 },
-  { tier:5, name:"Racer",      km:30, badge:"🔥", bonus:200 },
-  { tier:6, name:"Marathoner", km:40, badge:"🏅", bonus:300 },
-  { tier:7, name:"Champion",   km:50, badge:"🥇", bonus:500 },
+// Cardio Log — จดบันทึกเฉยๆ ไม่ผูกกับ habit/gamification ใดๆ
+const CARDIO_LOG_FIELDS = [
+  { key:"Run km",     icon:"🏃", label:"ระยะวิ่ง",   unit:"km",  step:"0.1" },
+  { key:"Run min",    icon:"⏱️", label:"เวลาวิ่ง",   unit:"min", step:"1" },
+  { key:"Run Avg HR", icon:"❤️", label:"HR เฉลี่ย",  unit:"bpm", step:"1" },
+  { key:"Cardio min", icon:"🚴", label:"Cardio อื่นๆ", unit:"min", step:"5" },
 ];
 
-const LEVEL_TITLES = [
-  { min:1,  title:"มือใหม่"          },
-  { min:3,  title:"กำลังสตาร์ท"     },
-  { min:5,  title:"มีวินัย"          },
-  { min:8,  title:"Consistent"       },
-  { min:10, title:"The Investor"     },
-  { min:15, title:"Marathon Trainee" },
-  { min:20, title:"Content Creator"  },
-  { min:30, title:"ผู้เชี่ยวชาญ"    },
-  { min:50, title:"ตำนาน"            },
-];
+const SAVING_PER_CUP = 50;
 
-// ===== REWARDS (เพิ่มรายการใหม่ได้ที่นี่) =====
-const REWARDS = [
-  { id:"cafe", icon:"☕", name:"Cafe",         cost:30  },
-  { id:"beer", icon:"🍺", name:"Beer",          cost:50  },
-  { id:"meal", icon:"🍽️", name:"Special Meal",  cost:70  },
+// Content-task stage tracker (Idea → Script → Film → Edit → Published), reuses Notion "Status" select
+const CONTENT_STAGES = [
+  { key:"IDEA",   label:"Idea" },
+  { key:"SCRIPT", label:"Script" },
+  { key:"FILM",   label:"Film" },
+  { key:"EDIT",   label:"Edit" },
+  { key:"PUBLISH",label:"Published" },
 ];
 
 // ===== STATE =====
@@ -103,18 +67,11 @@ let routineData      = [];
 let taskData         = [];
 let gameState        = null;
 let gameStatePageId  = null;
-let pendingReward    = null;
 
 // ===== DATE UTILS =====
 const todayStr  = new Date().toLocaleDateString("en-CA", { timeZone:"Asia/Bangkok" });
 const today     = new Date(todayStr + "T00:00:00");
 const isWeekend = today.getDay() === 0 || today.getDay() === 6;
-
-function getWeekStart(ds) {
-  const d = new Date(ds + "T00:00:00");
-  d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()));
-  return d.toISOString().slice(0, 10);
-}
 
 // ===== UTILS =====
 function daysDiff(ds) {
@@ -136,21 +93,6 @@ function showToast(msg, type = "success") {
   const t = document.getElementById("toast");
   t.textContent = msg; t.className = `show ${type}`;
   setTimeout(() => { t.className = ""; }, 2500);
-}
-function statKey(stat) {
-  return { STR:"xpStr", INT:"xpInt", CHA:"xpCha", ORD:"xpOrd" }[stat] || null;
-}
-function getLevelTitle(level) {
-  let title = LEVEL_TITLES[0].title;
-  for (const t of LEVEL_TITLES) { if (level >= t.min) title = t.title; }
-  return title;
-}
-function getHPState(hp) {
-  if (hp > 80) return { emoji:"💚", label:"Vitalized", xpMult:1.1 };
-  if (hp > 50) return { emoji:"💛", label:"Normal",    xpMult:1.0 };
-  if (hp > 20) return { emoji:"🟠", label:"Tired",     xpMult:0.75 };
-  if (hp > 0)  return { emoji:"🔴", label:"Exhausted", xpMult:0.5  };
-  return              { emoji:"💀", label:"Broken",    xpMult:0.25 };
 }
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
@@ -179,7 +121,7 @@ function checkIcon() {
   return `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>`;
 }
 
-// ===== GAMIFICATION ENGINE =====
+// ===== SAVING COUNTER + QUIT STREAK STATE (Notion "Game State" DB — slimmed down) =====
 
 async function loadGameState() {
   const data = await notionPost(`/databases/${DB.gameState}/query`, { page_size:1 });
@@ -190,19 +132,8 @@ async function loadGameState() {
     page = await notionPost("/pages", {
       parent: { database_id: DB.gameState },
       properties: {
-        Name:             { title:[{ text:{ content:"OAT" } }] },
-        HP:               { number:100 },
-        "XP STR":         { number:0 }, "XP INT": { number:0 },
-        "XP CHA":         { number:0 }, "XP ORD": { number:0 },
-        "Total XP":       { number:0 },
-        Level:            { number:1 },
-        Streak:           { number:0 },
-        Coins:            { number:0 },
-        "Marathon Tier":  { number:1 }, "Marathon Total": { number:0 },
-        "Weekly km":      { number:0 },
-        "Week Start":     { date:{ start: getWeekStart(todayStr) } },
-        "Saving Total":   { number:0 },
-        "Start Date":     { date:{ start: todayStr } },
+        Name:           { title:[{ text:{ content:"OAT" } }] },
+        "Saving Total": { number:0 },
       },
     });
   }
@@ -210,57 +141,24 @@ async function loadGameState() {
 
   gameStatePageId = page.id;
   parseGameState(page.properties);
-  await applyDailyDrain();
-  await checkMarathonWeek();
   renderAll();
 }
 
 function parseGameState(props) {
   gameState = {
-    hp:            props.HP?.number            ?? 100,
-    xpStr:         props["XP STR"]?.number     ?? 0,
-    xpInt:         props["XP INT"]?.number     ?? 0,
-    xpCha:         props["XP CHA"]?.number     ?? 0,
-    xpOrd:         props["XP ORD"]?.number     ?? 0,
-    totalXp:       props["Total XP"]?.number   ?? 0,
-    level:         props.Level?.number         ?? 1,
-    streak:        props.Streak?.number        ?? 0,
-    coins:         props.Coins?.number         ?? 0,
-    lastActive:    props["Last Active"]?.date?.start ?? null,
-    marathonTier:  props["Marathon Tier"]?.number  ?? 1,
-    marathonTotal: props["Marathon Total"]?.number ?? 0,
-    weeklyKm:      props["Weekly km"]?.number  ?? 0,
-    weekStart:     props["Week Start"]?.date?.start ?? getWeekStart(todayStr),
-    savingTotal:   props["Saving Total"]?.number ?? 0,
+    savingTotal:      props["Saving Total"]?.number ?? 0,
     coffeeQuitSince:  props["Coffee Quit Since"]?.date?.start ?? null,
     alcoholQuitSince: props["Alcohol Quit Since"]?.date?.start ?? null,
-    _streakUpdated: false,
   };
 }
 
 async function saveGameState(updates = {}) {
   if (!gameStatePageId || !gameState) return;
   Object.assign(gameState, updates);
-  gameState.hp    = Math.round(Math.min(HP_MAX, Math.max(0, gameState.hp)));
-  gameState.level = Math.floor(gameState.totalXp / XP_PER_LEVEL) + 1;
 
   const props = {
-    HP:               { number: gameState.hp },
-    "XP STR":         { number: Math.max(0, gameState.xpStr) },
-    "XP INT":         { number: Math.max(0, gameState.xpInt) },
-    "XP CHA":         { number: Math.max(0, gameState.xpCha) },
-    "XP ORD":         { number: Math.max(0, gameState.xpOrd) },
-    "Total XP":       { number: Math.max(0, gameState.totalXp) },
-    Level:            { number: gameState.level },
-    Streak:           { number: Math.max(0, gameState.streak) },
-    Coins:            { number: Math.max(0, gameState.coins || 0) },
-    "Marathon Tier":  { number: gameState.marathonTier },
-    "Marathon Total": { number: Math.max(0, gameState.marathonTotal) },
-    "Weekly km":      { number: Math.max(0, gameState.weeklyKm) },
-    "Saving Total":   { number: Math.max(0, gameState.savingTotal) },
+    "Saving Total": { number: Math.max(0, gameState.savingTotal || 0) },
   };
-  if (gameState.lastActive) props["Last Active"] = { date:{ start: gameState.lastActive } };
-  if (gameState.weekStart)  props["Week Start"]  = { date:{ start: gameState.weekStart } };
   if (gameState.coffeeQuitSince)  props["Coffee Quit Since"]  = { date:{ start: gameState.coffeeQuitSince } };
   if (gameState.alcoholQuitSince) props["Alcohol Quit Since"] = { date:{ start: gameState.alcoholQuitSince } };
 
@@ -269,221 +167,8 @@ async function saveGameState(updates = {}) {
 }
 
 function renderAll() {
-  renderCharacter();
-  renderMarathon();
   renderSaving();
-  renderCoins();
   renderQuitCounters();
-}
-
-async function applyDailyDrain() {
-  if (!gameState) return;
-  const drainKey = `oat_drain_${todayStr}`;
-  if (localStorage.getItem(drainKey)) return;
-  localStorage.setItem(drainKey, "1");
-  if (gameState.lastActive && gameState.lastActive < todayStr) {
-    const diffDays = Math.max(0, Math.floor((today - new Date(gameState.lastActive + "T00:00:00")) / 86400000) - 1);
-    if (diffDays > 0) {
-      gameState.hp = Math.max(0, gameState.hp - HP_DRAIN_PER_DAY * diffDays);
-      await notionPatch(`/pages/${gameStatePageId}`, { properties:{ HP:{ number: gameState.hp } } });
-    }
-  }
-}
-
-async function checkMarathonWeek() {
-  if (!gameState) return;
-  const curWeekStart = getWeekStart(todayStr);
-  if (gameState.weekStart === curWeekStart) return;
-
-  const prevTier = MARATHON_TIERS[Math.min(gameState.marathonTier - 1, 6)];
-  const advTier  = MARATHON_TIERS[Math.min(gameState.marathonTier, 6)];
-  const wkm      = gameState.weeklyKm || 0;
-
-  let newTier = gameState.marathonTier;
-  if (advTier && wkm >= advTier.km) newTier = Math.min(7, gameState.marathonTier + 1);
-  else if (wkm < prevTier.km)       newTier = Math.max(1, gameState.marathonTier - 1);
-
-  const bonusXP = MARATHON_TIERS[newTier - 1].bonus;
-  const tierChanged = newTier !== gameState.marathonTier;
-  gameState.marathonTier = newTier;
-  gameState.weeklyKm = 0;
-  gameState.weekStart = curWeekStart;
-  if (bonusXP > 0) { gameState.totalXp += bonusXP; gameState.xpStr += bonusXP; }
-  await saveGameState({});
-  if (tierChanged) {
-    const t = MARATHON_TIERS[newTier - 1];
-    showToast(`${t.badge} Marathon: ${t.name}!${bonusXP > 0 ? ` +${bonusXP} XP` : ""}`);
-  }
-}
-
-// ===== XP & COIN HELPERS =====
-
-function addHabitXP(key, checked) {
-  if (!gameState) return 0;
-  const meta = HABIT_META[key];
-  if (!meta || !meta.stat || !meta.xp) return 0;
-  const sk = statKey(meta.stat);
-  const sKey = `oat_hxp_${todayStr}_${key}`;
-  if (checked) {
-    const applied = Math.round(meta.xp * getHPState(gameState.hp).xpMult);
-    localStorage.setItem(sKey, applied);
-    if (sk) gameState[sk] = (gameState[sk] || 0) + applied;
-    gameState.totalXp = (gameState.totalXp || 0) + applied;
-    return applied;
-  } else {
-    const prev = parseInt(localStorage.getItem(sKey) || meta.xp);
-    localStorage.removeItem(sKey);
-    if (sk) gameState[sk] = Math.max(0, (gameState[sk] || 0) - prev);
-    gameState.totalXp = Math.max(0, (gameState.totalXp || 0) - prev);
-    return -prev;
-  }
-}
-
-function addHabitCoins(key, checked) {
-  if (!gameState) return 0;
-  const meta = HABIT_META[key];
-  if (!meta || !meta.coins) return 0;
-  const sKey = `oat_coins_${todayStr}_${key}`;
-  if (checked) {
-    localStorage.setItem(sKey, meta.coins);
-    gameState.coins = (gameState.coins || 0) + meta.coins;
-    return meta.coins;
-  } else {
-    const prev = parseInt(localStorage.getItem(sKey) || 0);
-    localStorage.removeItem(sKey);
-    gameState.coins = Math.max(0, (gameState.coins || 0) - prev);
-    return -prev;
-  }
-}
-
-function addNumXPAndCoins(key, oldVal, newVal) {
-  if (!gameState) return { xp:0, coins:0 };
-  const meta = HABIT_META[key];
-  const sk = statKey(meta.stat);
-  const oldXP    = Math.floor(oldVal / meta.per) * meta.xpPer;
-  const newXP    = Math.floor(newVal / meta.per) * meta.xpPer;
-  const xpDelta  = newXP - oldXP;
-  const oldCoins = meta.coinsPer ? Math.floor(oldVal / meta.per) * meta.coinsPer : 0;
-  const newCoins = meta.coinsPer ? Math.floor(newVal / meta.per) * meta.coinsPer : 0;
-  const coinDelta = newCoins - oldCoins;
-  if (xpDelta !== 0 && sk) {
-    gameState[sk]     = Math.max(0, (gameState[sk] || 0) + xpDelta);
-    gameState.totalXp = Math.max(0, (gameState.totalXp || 0) + xpDelta);
-  }
-  if (coinDelta !== 0) {
-    gameState.coins = Math.max(0, (gameState.coins || 0) + coinDelta);
-  }
-  return { xp: xpDelta, coins: coinDelta };
-}
-
-function checkPerfectDay(props) {
-  if (!gameState) return 0;
-  const core     = ["8 hr. Sleep","Water 2 lt.","Reading","Content","Cook","No Coffee"];
-  const coreDone = core.every(h => props[h]?.checkbox === true);
-  const hasEx    = props["Weight Training"]?.checkbox === true ||
-                   (props["Run km"]?.number || 0) > 0 ||
-                   (props["Cardio min"]?.number || 0) > 0;
-  const pdKey = `oat_pd_${todayStr}`;
-  const was   = localStorage.getItem(pdKey);
-
-  if (coreDone && hasEx && !was) {
-    localStorage.setItem(pdKey, "1");
-    gameState.totalXp += PERFECT_DAY_BONUS;
-    gameState.xpStr += 13; gameState.xpInt += 13;
-    gameState.xpCha += 12; gameState.xpOrd += 12;
-    gameState.coins = (gameState.coins || 0) + PERFECT_DAY_COINS;
-    showToast(`🌟 Perfect Day! +${PERFECT_DAY_BONUS} XP +${PERFECT_DAY_COINS} 🪙`);
-    return PERFECT_DAY_BONUS;
-  }
-  if ((!coreDone || !hasEx) && was) {
-    localStorage.removeItem(pdKey);
-    gameState.totalXp = Math.max(0, gameState.totalXp - PERFECT_DAY_BONUS);
-    gameState.xpStr   = Math.max(0, gameState.xpStr - 13);
-    gameState.xpInt   = Math.max(0, gameState.xpInt - 13);
-    gameState.xpCha   = Math.max(0, gameState.xpCha - 12);
-    gameState.xpOrd   = Math.max(0, gameState.xpOrd - 12);
-    gameState.coins   = Math.max(0, (gameState.coins || 0) - PERFECT_DAY_COINS);
-    return -PERFECT_DAY_BONUS;
-  }
-  return 0;
-}
-
-function checkStreakUpdate() {
-  if (!gameState || gameState._streakUpdated || gameState.lastActive === todayStr) return {};
-  gameState._streakUpdated = true;
-  const updates = { lastActive: todayStr };
-  if (!gameState.lastActive) {
-    updates.streak = 1;
-  } else {
-    const diff = Math.round((today - new Date(gameState.lastActive + "T00:00:00")) / 86400000);
-    updates.streak = diff === 1 ? (gameState.streak || 0) + 1 : 1;
-  }
-  return updates;
-}
-
-function checkVitaminBonuses(props) {
-  const schedule = isWeekend ? VITAMIN_SCHEDULE.weekend : VITAMIN_SCHEDULE.weekday;
-  const allDone  = schedule.every(v => props[v.key]?.checkbox === true);
-
-  const hpKey   = `oat_vhp_${todayStr}`;
-  const coinKey = `oat_vcoin_${todayStr}`;
-  let hpDelta = 0, coinDelta = 0;
-
-  if (allDone && !localStorage.getItem(hpKey)) {
-    localStorage.setItem(hpKey, "1"); hpDelta = 10;
-  } else if (!allDone && localStorage.getItem(hpKey)) {
-    localStorage.removeItem(hpKey); hpDelta = -10;
-  }
-  if (allDone && !localStorage.getItem(coinKey)) {
-    localStorage.setItem(coinKey, "1"); coinDelta = VITAMIN_COINS;
-  } else if (!allDone && localStorage.getItem(coinKey)) {
-    localStorage.removeItem(coinKey); coinDelta = -VITAMIN_COINS;
-  }
-  return { hpDelta, coinDelta };
-}
-
-// ===== RENDER =====
-
-function renderCharacter() {
-  if (!gameState) return;
-  const level   = Math.floor(gameState.totalXp / XP_PER_LEVEL) + 1;
-  const xpInLv  = gameState.totalXp % XP_PER_LEVEL;
-  const hp      = Math.round(gameState.hp);
-  const hpState = getHPState(hp);
-  const hpColor = hp > 80 ? "var(--green)" : hp > 50 ? "var(--amber)" : hp > 20 ? "var(--orange)" : "var(--red)";
-
-  setEl("char-level",    `Lv.${level}`);
-  setEl("char-title",    getLevelTitle(level));
-  setEl("xp-label",      `${xpInLv.toLocaleString()} / ${XP_PER_LEVEL.toLocaleString()} XP`);
-  setEl("hp-value-label",`${hp}/100`);
-  setEl("hp-state-label",`${hpState.emoji} ${hpState.label}`);
-  setEl("stat-str",      gameState.xpStr);
-  setEl("stat-int",      gameState.xpInt);
-  setEl("stat-cha",      gameState.xpCha);
-  setEl("stat-ord",      gameState.xpOrd);
-  setEl("char-streak",   gameState.streak > 0 ? `🔥 Streak ${gameState.streak} วัน` : "Streak 0 วัน — เริ่มเลย!");
-
-  const xpBar = document.getElementById("xp-bar");
-  if (xpBar) xpBar.style.width = `${((xpInLv / XP_PER_LEVEL) * 100).toFixed(1)}%`;
-  const hpBar = document.getElementById("hp-bar");
-  if (hpBar) { hpBar.style.width = `${Math.max(0, (hp / HP_MAX) * 100)}%`; hpBar.style.background = hpColor; }
-}
-
-function renderMarathon() {
-  if (!gameState) return;
-  const tier     = MARATHON_TIERS[Math.min(gameState.marathonTier - 1, 6)];
-  const nextTier = MARATHON_TIERS[Math.min(gameState.marathonTier, 6)];
-  const wkm      = gameState.weeklyKm || 0;
-  const pct      = Math.min(100, (wkm / tier.km) * 100);
-
-  setEl("marathon-tier-badge",  `${tier.badge} ${tier.name}`);
-  setEl("marathon-week-km",     wkm.toFixed(1));
-  setEl("marathon-week-target", tier.km);
-  setEl("marathon-total-km",    `สะสม ${(gameState.marathonTotal || 0).toFixed(1)} km`);
-  setEl("marathon-next-tier",   nextTier && nextTier.tier > tier.tier ? `⬆️ Advance: ${nextTier.km} km/week` : "🏆 Max Tier!");
-
-  const bar = document.getElementById("marathon-week-bar");
-  if (bar) { bar.style.width = `${pct}%`; bar.style.background = pct >= 100 ? "var(--green)" : "var(--blue)"; }
 }
 
 function renderSaving() {
@@ -492,33 +177,6 @@ function renderSaving() {
   const cups  = Math.round(total / SAVING_PER_CUP);
   setEl("saving-total", `฿${total.toLocaleString()}`);
   setEl("saving-cups",  `${cups} แก้ว × ฿${SAVING_PER_CUP}`);
-}
-
-function renderCoins() {
-  if (!gameState) return;
-  const coins = gameState.coins || 0;
-  setEl("coin-balance",       coins.toLocaleString());
-  setEl("coin-balance-badge", `${coins} 🪙`);
-
-  const el = document.getElementById("rewards-list");
-  if (!el) return;
-
-  let html = "";
-  for (const reward of REWARDS) {
-    const canAfford = coins >= reward.cost;
-    html += `
-      <div class="reward-row${!canAfford ? " locked" : ""}">
-        <span class="reward-icon">${reward.icon}</span>
-        <div class="reward-info">
-          <span class="reward-name">${reward.name}</span>
-          <span class="reward-cost-label">${reward.cost} 🪙</span>
-        </div>
-        <button class="redeem-btn" onclick="showRedeemModal('${reward.id}')" ${!canAfford ? "disabled" : ""}>
-          Redeem
-        </button>
-      </div>`;
-  }
-  el.innerHTML = html;
 }
 
 // ===== QUIT STREAK COUNTERS =====
@@ -575,38 +233,6 @@ document.getElementById("quit-coffee-reset").addEventListener("click", () => res
 document.getElementById("quit-alcohol-reset").addEventListener("click", () => resetQuitCounter("alcohol"));
 setInterval(renderQuitCounters, 60000);
 
-// ===== REDEEM MODAL =====
-
-function showRedeemModal(rewardId) {
-  const reward = REWARDS.find(r => r.id === rewardId);
-  if (!reward || !gameState) return;
-  if ((gameState.coins || 0) < reward.cost) {
-    showToast(`Coins ไม่พอ (มี ${gameState.coins || 0} 🪙)`, "error");
-    return;
-  }
-  pendingReward = reward;
-  const remaining = (gameState.coins || 0) - reward.cost;
-  setEl("modal-reward-icon", reward.icon);
-  setEl("modal-reward-name", reward.name);
-  setEl("modal-reward-cost", `ใช้ ${reward.cost} 🪙`);
-  setEl("modal-reward-after",`เหลือ ${remaining} 🪙`);
-  document.getElementById("redeem-modal").style.display = "flex";
-}
-
-async function confirmRedeem() {
-  if (!pendingReward || !gameState) return;
-  document.getElementById("redeem-modal").style.display = "none";
-  gameState.coins = Math.max(0, (gameState.coins || 0) - pendingReward.cost);
-  await saveGameState({ coins: gameState.coins });
-  showToast(`${pendingReward.icon} Redeemed: ${pendingReward.name}!`);
-  pendingReward = null;
-}
-
-function cancelRedeem() {
-  document.getElementById("redeem-modal").style.display = "none";
-  pendingReward = null;
-}
-
 // ===== HABITS =====
 
 async function loadHabits() {
@@ -629,24 +255,19 @@ async function loadHabits() {
   if (!page) { el.innerHTML = `<div class="empty">สร้าง entry ไม่ได้</div>`; return; }
   todayHabitPageId = page.id;
   renderHabits(page.properties);
+  renderCardioLog(page.properties);
 }
 
 function countHabitsDone(props) {
   let done = 0;
   for (const k of HABIT_CHECKS) if (props[k]?.checkbox) done++;
-  for (const k of HABIT_NUMS)   if ((props[k]?.number || 0) > 0) done++;
   return done;
 }
 
 function renderHabitCheck(key, props) {
   const meta    = HABIT_META[key];
   const checked = props[key]?.checkbox ?? false;
-  let chips = "";
-  if (meta.xp)        chips += `<span class="xp-chip">${meta.stat} +${meta.xp}</span>`;
-  if (meta.hpRecover) chips += `<span class="xp-chip hp-chip">HP +${meta.hpRecover}</span>`;
-  if (meta.hpBonus)   chips += `<span class="xp-chip hp-chip">HP +${meta.hpBonus}</span>`;
-  if (meta.saving)    chips += `<span class="xp-chip save-chip">฿+${meta.saving}</span>`;
-  if (meta.coins)     chips += `<span class="xp-chip coin-chip">+${meta.coins} 🪙</span>`;
+  const chips   = meta.saving ? `<span class="xp-chip save-chip">฿+${meta.saving}</span>` : "";
   return `
       <div class="check-row${checked?" checked":""}" data-type="habit" data-key="${key}" data-checked="${checked}">
         <div class="check-box">${checkIcon()}</div>
@@ -657,41 +278,21 @@ function renderHabitCheck(key, props) {
 
 function renderHabits(props) {
   const el  = document.getElementById("habit-list");
-  const total = HABIT_CHECKS.length + HABIT_NUMS.length;
   let html = "";
+  for (const key of HABIT_CHECKS) html += renderHabitCheck(key, props);
+  el.innerHTML = html;
+  document.getElementById("habit-count").textContent = `${countHabitsDone(props)}/${HABIT_CHECKS.length}`;
 
-  // ── Core 6: วินัยหลัก (ขึ้นบนสุด + ตัวนับแยก) ──
-  const coreDone = CORE_HABITS.filter(k => props[k]?.checkbox === true).length;
-  html += `<div class="habit-group-header">🎯 วินัยหลัก<span class="core-count${coreDone === CORE_HABITS.length ? " full" : ""}">${coreDone}/${CORE_HABITS.length}</span></div>`;
-  for (const key of CORE_HABITS) html += renderHabitCheck(key, props);
+  el.querySelectorAll(".check-row[data-type=habit]").forEach(row => {
+    row.addEventListener("click", () => toggleHabit(row));
+  });
+}
 
-  // ── habit อื่น ๆ ──
-  const others = HABIT_CHECKS.filter(k => !CORE_HABITS.includes(k));
-  if (others.length) {
-    html += `<div class="habit-group-header">อื่น ๆ</div>`;
-    for (const key of others) html += renderHabitCheck(key, props);
-  }
-
-  for (const key of HABIT_NUMS) {
-    const meta = HABIT_META[key];
-    const val  = props[key]?.number ?? 0;
-    const unit = key === "Run km" ? "km" : "min";
-    const step = key === "Run km" ? "0.1" : "5";
-    html += `
-      <div class="num-row${val > 0 ? " done" : ""}">
-        <div class="num-label">${meta.icon} ${meta.label}</div>
-        <div class="num-input-wrap">
-          <input class="num-input" type="number" inputmode="decimal"
-            data-key="${key}" data-prev="${val}"
-            value="${val || ""}" placeholder="0" min="0" step="${step}" />
-          <span class="num-unit">${unit}</span>
-        </div>
-        <span class="xp-chip">${meta.stat} +${meta.xpPer}/${meta.per}${unit}</span>
-        ${meta.coinsPer ? `<span class="xp-chip coin-chip">+${meta.coinsPer} 🪙/${meta.per}${unit}</span>` : ""}
-      </div>`;
-  }
-
-  for (const f of RUN_DETAIL_FIELDS) {
+function renderCardioLog(props) {
+  const el = document.getElementById("cardio-log-list");
+  if (!el) return;
+  let html = "";
+  for (const f of CARDIO_LOG_FIELDS) {
     const val = props[f.key]?.number ?? 0;
     html += `
       <div class="num-row run-detail-row${val > 0 ? " done" : ""}">
@@ -704,22 +305,10 @@ function renderHabits(props) {
         </div>
       </div>`;
   }
-
   el.innerHTML = html;
-  document.getElementById("habit-count").textContent = `${countHabitsDone(props)}/${total}`;
-
-  el.querySelectorAll(".check-row[data-type=habit]").forEach(row => {
-    row.addEventListener("click", () => toggleHabit(row));
-  });
-  el.querySelectorAll(".num-input:not(.run-detail-input)").forEach(input => {
-    input.addEventListener("change", () => updateHabitNumber(input));
-    input.addEventListener("blur",   () => updateHabitNumber(input));
-    input.addEventListener("click",  e  => e.stopPropagation());
-  });
   el.querySelectorAll(".run-detail-input").forEach(input => {
     input.addEventListener("change", () => updateRunDetail(input));
     input.addEventListener("blur",   () => updateRunDetail(input));
-    input.addEventListener("click",  e  => e.stopPropagation());
   });
 }
 
@@ -752,84 +341,16 @@ async function toggleHabit(row) {
     showToast("บันทึกไม่สำเร็จ", "error"); return;
   }
 
-  const meta     = HABIT_META[key];
-  const updates  = { ...checkStreakUpdate() };
-  const xpDelta  = addHabitXP(key, newVal);
-  const coinDelta = addHabitCoins(key, newVal);
-
-  let hpDelta = 0;
-  if (meta.hpRecover) hpDelta += newVal ?  meta.hpRecover : -meta.hpRecover;
-  if (meta.hpBonus)   hpDelta += newVal ?  meta.hpBonus   : -meta.hpBonus;
-  if (hpDelta !== 0)  { gameState.hp = Math.min(HP_MAX, Math.max(0, (gameState.hp||0) + hpDelta)); updates.hp = gameState.hp; }
-
-  if (meta.saving) {
+  const meta = HABIT_META[key];
+  if (meta.saving && gameState) {
     gameState.savingTotal = Math.max(0, (gameState.savingTotal||0) + (newVal ? meta.saving : -meta.saving));
-    updates.savingTotal   = gameState.savingTotal;
+    await saveGameState({ savingTotal: gameState.savingTotal });
+    showToast(newVal ? `${meta.icon} ${meta.label}  ฿+${meta.saving}` : `↩ ${meta.label}`);
+  } else {
+    showToast(newVal ? `${meta.icon} ${meta.label}` : `↩ ${meta.label}`);
   }
-
-  updates.totalXp = gameState.totalXp;
-  updates.coins   = gameState.coins;
-  const sk = statKey(meta.stat);
-  if (sk) updates[sk] = gameState[sk];
-
-  let toast = newVal
-    ? [
-        `${meta.icon} ${meta.label}`,
-        Math.abs(xpDelta) > 0  ? `+${Math.abs(xpDelta)} ${meta.stat}` : "",
-        hpDelta > 0            ? `+${hpDelta}HP`                        : "",
-        meta.saving            ? `฿+${meta.saving}`                     : "",
-        coinDelta > 0          ? `+${coinDelta} 🪙`                     : "",
-      ].filter(Boolean).join("  ")
-    : `↩ ${meta.label}`;
-  showToast(toast);
-
-  await saveGameState(updates);
-  const pdDelta = checkPerfectDay(res.properties);
-  if (pdDelta !== 0) await saveGameState({});
 
   renderHabits(res.properties);
-  loadFocus();
-}
-
-async function updateHabitNumber(input) {
-  if (!todayHabitPageId || !gameState) return;
-  const key    = input.dataset.key;
-  const newVal = parseFloat(input.value) || 0;
-  const oldVal = parseFloat(input.dataset.prev) || 0;
-  if (newVal === oldVal) return;
-  input.dataset.prev = newVal;
-
-  const res = await notionPatch(`/pages/${todayHabitPageId}`, {
-    properties: { [key]:{ number: newVal > 0 ? newVal : null } },
-  });
-  if (!res) { showToast("บันทึกไม่สำเร็จ", "error"); return; }
-
-  const meta    = HABIT_META[key];
-  const sk      = statKey(meta.stat);
-  const { xp: xpDelta, coins: coinDelta } = addNumXPAndCoins(key, oldVal, newVal);
-  const updates = { ...checkStreakUpdate() };
-
-  if (sk)       { updates[sk]   = gameState[sk]; updates.totalXp = gameState.totalXp; }
-  if (coinDelta !== 0) { updates.coins = gameState.coins; }
-
-  if (meta.marathon) {
-    const kmDelta = newVal - oldVal;
-    gameState.marathonTotal = Math.max(0, (gameState.marathonTotal||0) + kmDelta);
-    gameState.weeklyKm      = Math.max(0, (gameState.weeklyKm||0) + kmDelta);
-    updates.marathonTotal   = gameState.marathonTotal;
-    updates.weeklyKm        = gameState.weeklyKm;
-  }
-
-  await saveGameState(updates);
-  const pdDelta = checkPerfectDay(res.properties);
-  if (pdDelta !== 0) await saveGameState({});
-
-  const numRow = input.closest(".num-row");
-  if (numRow) numRow.classList.toggle("done", newVal > 0);
-  if (xpDelta > 0) showToast(`${meta.icon} +${xpDelta} STR${coinDelta > 0 ? `  +${coinDelta} 🪙` : ""}`);
-
-  document.getElementById("habit-count").textContent =
-    `${countHabitsDone(res.properties)}/${HABIT_CHECKS.length + HABIT_NUMS.length}`;
   loadFocus();
 }
 
@@ -859,17 +380,13 @@ async function loadHabitSummary() {
     days.push(d.toISOString().slice(0, 10));
   }
 
-  const allHabits = [
-    ...HABIT_CHECKS.map(k => ({ key:k, label:HABIT_META[k]?.label || k, num:false })),
-    ...HABIT_NUMS.map(k   => ({ key:k, label:HABIT_META[k]?.label || k, num:true  })),
-  ];
-
   let html = "";
-  for (const { key, label, num } of allHabits) {
+  for (const key of HABIT_CHECKS) {
+    const label = HABIT_META[key]?.label || key;
     let count = 0, dots = "";
     days.forEach(day => {
       const props   = dayMap[day];
-      const checked = num ? (props?.[key]?.number||0) > 0 : props?.[key]?.checkbox||false;
+      const checked = props?.[key]?.checkbox || false;
       if (checked) count++;
       dots += `<span class="dot ${checked?"done":"miss"}${day===todayStr?" today-dot":""}" title="${day}"></span>`;
     });
@@ -977,14 +494,6 @@ async function toggleVitamin(row) {
   if (res) {
     showToast(newVal ? `💊 ${key}` : `↩ ${key}`);
     renderVitamins(res.properties);
-    const { hpDelta, coinDelta } = checkVitaminBonuses(res.properties);
-    if ((hpDelta !== 0 || coinDelta !== 0) && gameState && gameStatePageId) {
-      if (hpDelta !== 0) gameState.hp = Math.min(HP_MAX, Math.max(0, gameState.hp + hpDelta));
-      if (coinDelta !== 0) gameState.coins = Math.max(0, (gameState.coins||0) + coinDelta);
-      await saveGameState({ hp: gameState.hp, coins: gameState.coins });
-      if (hpDelta > 0 || coinDelta > 0)
-        showToast(`💊 วิตามินครบ!${hpDelta>0?` +${hpDelta}HP`:""}${coinDelta>0?` +${coinDelta} 🪙`:""}`);
-    }
   } else {
     showToast("บันทึกไม่สำเร็จ", "error");
   }
@@ -1063,36 +572,24 @@ async function markRoutineDone(pageId, btn) {
   else { showToast("บันทึกไม่สำเร็จ","error"); btn.disabled=false; btn.textContent="Done"; }
 }
 
-// ===== TRAINER PLAN (Steve) =====
-async function loadTrainerPlan() {
-  const el = document.getElementById("trainer-plan-card");
-  const data = await notionPost(`/databases/${DB.trainerPlan}/query`, {
-    sorts: [{ property: "Week Start", direction: "descending" }], page_size: 1,
-  });
-  if (!data || !data.results) { el.innerHTML = `<div class="empty">โหลดไม่ได้</div>`; return; }
-  if (!data.results.length) {
-    el.innerHTML = `<div class="empty">ยังไม่มีคำแนะนำ — รัน /steve เพื่อให้ Steve ดูให้</div>`;
-    return;
-  }
-  renderTrainerPlan(data.results[0].properties);
-}
-
-function richText(prop) {
-  return (prop?.rich_text || []).map(t => t.plain_text).join("") || "—";
-}
-
-// แสดงแค่คำแนะนำสุขภาพสั้นๆ บรรทัดเดียว (โอ๊ตขอ 2026-06-17): ช่วงนี้ขาดด้านไหน + ควรโฟกัสอะไร
-// เนื้อหามาจาก field "Key Actions" ของ Notion ที่ Steve เขียนเป็น health-focus nudge
-function renderTrainerPlan(props) {
-  const el = document.getElementById("trainer-plan-card");
-  el.innerHTML = `
-    <div class="trainer-plan-focus">
-      <span class="trainer-plan-focus-icon">🎯</span>
-      <span class="trainer-plan-focus-text">${richText(props["Key Actions"])}</span>
-    </div>`;
-}
-
 // ===== TASKS =====
+
+function isContentTask(props) {
+  const tags = (props.Tags?.multi_select || []).map(t => t.name);
+  return tags.includes("Youtube") || tags.includes("Tiktok");
+}
+
+function renderContentStages(taskId, status) {
+  const curIdx = CONTENT_STAGES.findIndex(s => s.key === status);
+  let html = `<div class="content-stages" data-id="${taskId}">`;
+  CONTENT_STAGES.forEach((s, i) => {
+    const done = curIdx >= 0 && i <= curIdx;
+    html += `<div class="stage-check${done?" done":""}" data-stage="${s.key}" title="${s.label}">${checkIcon()}<span class="stage-label">${s.label}</span></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
 async function loadTasks() {
   const el=document.getElementById("task-list");
   const data=await notionPost(`/databases/${DB.tasks}/query`,{
@@ -1116,9 +613,20 @@ async function loadTasks() {
     let dueLabel=thaiDate(dueDate),dueClass="";
     if (diff<0) { dueLabel=`เลยกำหนด ${Math.abs(diff)} วัน`; dueClass="overdue"; }
     else if (diff===0) { dueLabel="Due วันนี้"; dueClass="soon"; }
-    const sc=status==="IN PROGRESS"?"in-progress":"todo";
-    const sl=status==="IN PROGRESS"?"In Progress":(status||"To Do");
-    html+=`
+
+    if (isContentTask(p)) {
+      html+=`
+      <div class="task-row content-task-row" data-id="${r.id}">
+        <div class="task-info">
+          <div class="task-name">${name}</div>
+          <div class="task-meta ${dueClass}">${dueLabel}</div>
+        </div>
+        ${renderContentStages(r.id, status)}
+      </div>`;
+    } else {
+      const sc=status==="IN PROGRESS"?"in-progress":"todo";
+      const sl=status==="IN PROGRESS"?"In Progress":(status||"To Do");
+      html+=`
       <div class="task-row" data-id="${r.id}">
         <div class="task-info">
           <div class="task-name">${name}</div>
@@ -1127,9 +635,29 @@ async function loadTasks() {
         <span class="status-chip ${sc}">${sl}</span>
         <button class="done-btn" onclick="markTaskDone('${r.id}',this)">Done</button>
       </div>`;
+    }
   }
   el.innerHTML=html;
   document.getElementById("task-count").textContent=visible.length;
+
+  el.querySelectorAll(".stage-check").forEach(node => {
+    node.addEventListener("click", () => {
+      const taskId = node.closest(".content-stages").dataset.id;
+      updateTaskStage(taskId, node.dataset.stage);
+    });
+  });
+}
+
+async function updateTaskStage(taskId, stageKey) {
+  const props = { Status: { select: { name: stageKey } } };
+  if (stageKey === "PUBLISH") props.Done = { checkbox: true };
+  const res = await notionPatch(`/pages/${taskId}`, { properties: props });
+  if (res) {
+    showToast(stageKey === "PUBLISH" ? "🎬 Published! Task เสร็จแล้ว" : `📌 ${stageKey}`);
+    await loadTasks();
+  } else {
+    showToast("บันทึกไม่สำเร็จ", "error");
+  }
 }
 
 async function markTaskDone(pageId, btn) {
@@ -1238,7 +766,6 @@ function loadAll() {
   loadVitaminStreak();
   loadRoutines();
   loadTasks();
-  loadTrainerPlan();
 }
 
 initTheme();

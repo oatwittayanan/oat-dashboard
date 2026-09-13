@@ -337,35 +337,6 @@ body {
   transition: width 0.6s ease;
 }
 
-/* ---- Trainer Plan ---- */
-.trainer-plan-row {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--hairline);
-}
-.trainer-plan-row:last-child { border-bottom: none; }
-.trainer-plan-label {
-  display: block; margin-bottom: 4px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--fg-dim);
-}
-.trainer-plan-value {
-  font-size: 13px; color: var(--fg); line-height: 1.5;
-  white-space: pre-wrap;
-}
-.trainer-plan-week {
-  font-size: 11px; color: var(--fg-muted); margin-top: 2px;
-  font-family: var(--font-mono);
-}
-.trainer-plan-focus {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 14px 16px;
-}
-.trainer-plan-focus-icon { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
-.trainer-plan-focus-text {
-  font-size: 14px; color: var(--fg); line-height: 1.6;
-  white-space: pre-wrap;
-}
-
 /* ---- Setup banner ---- */
 #setup-banner {
   background: var(--amber-soft); border: 1px solid var(--amber-line);
@@ -385,77 +356,6 @@ body {
   background: var(--amber); color: #000; border: none;
   border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
   cursor: pointer; border-radius: var(--radius-sm);
-}
-
-/* ---- Character Card ---- */
-.char-level-badge {
-  font-size: 12px; font-weight: 700; font-family: var(--font-mono);
-  color: var(--amber); background: var(--amber-soft);
-  padding: 2px 10px; border-radius: 99px;
-}
-.char-card { padding: 0; }
-.char-top {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px 10px;
-}
-.char-name-wrap { display: flex; align-items: baseline; gap: 8px; }
-.char-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-.char-title {
-  font-size: 11px; color: var(--amber); font-weight: 600;
-  background: var(--amber-soft); padding: 2px 8px; border-radius: 99px;
-}
-.char-streak { font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono); }
-
-.char-xp-wrap { padding: 0 16px 10px; }
-.char-bar-bg {
-  height: 6px; background: var(--hairline-strong); border-radius: 99px;
-  overflow: hidden; margin-bottom: 5px;
-}
-.char-xp-fill {
-  height: 100%; border-radius: 99px; background: var(--amber);
-  transition: width 0.6s ease;
-}
-.char-xp-label { font-size: 11px; font-family: var(--font-mono); color: var(--fg-dim); text-align: right; }
-
-.char-hp-wrap { padding: 0 16px 10px; }
-.char-hp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.char-hp-icon { font-size: 13px; }
-.char-hp-val  { font-size: 12px; font-family: var(--font-mono); font-weight: 600; color: var(--fg); }
-.char-hp-state { font-size: 11px; color: var(--fg-muted); margin-left: auto; }
-.char-hp-fill {
-  height: 100%; border-radius: 99px;
-  transition: width 0.6s ease, background 0.4s ease;
-}
-
-.stats-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--hairline);
-}
-.stat-box {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 12px 4px; gap: 3px;
-  border-right: 1px solid var(--hairline);
-}
-.stat-box:last-child { border-right: none; }
-.stat-icon { font-size: 16px; }
-.stat-name { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--fg-dim); text-transform: uppercase; }
-.stat-val  { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--fg); }
-
-/* ---- Marathon ---- */
-.marathon-inner { padding: 14px 16px; }
-.marathon-week-row {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-}
-.marathon-week-label { font-size: 13px; color: var(--fg-muted); }
-.marathon-week-km    { font-size: 13px; font-weight: 600; font-family: var(--font-mono); }
-.marathon-bar { margin-bottom: 10px; }
-.char-marathon-fill  {
-  height: 100%; border-radius: 99px; background: var(--blue);
-  transition: width 0.6s ease, background 0.3s;
-}
-.marathon-footer {
-  display: flex; justify-content: space-between;
-  font-size: 11px; color: var(--fg-dim); font-family: var(--font-mono);
 }
 
 /* ---- Saving Counter ---- */
@@ -489,14 +389,12 @@ body {
 .quit-reset-btn:hover { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
 .quit-reset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ---- XP / HP / Save chips on habits ---- */
+/* ---- Save chip on habits ---- */
 .xp-chip {
   font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px;
   background: var(--blue-soft); color: var(--blue); flex-shrink: 0;
   margin-left: auto;
 }
-.xp-chip + .xp-chip { margin-left: 4px; }
-.hp-chip   { background: var(--red-soft);   color: var(--red);   }
 .save-chip { background: var(--green-soft); color: var(--green); }
 
 /* ---- Number input habit row ---- */
@@ -519,92 +417,23 @@ body {
 .num-input:focus { border-color: var(--blue); }
 .num-unit { font-size: 11px; color: var(--fg-muted); width: 24px; }
 
-/* ---- Coin chip on habits ---- */
-.coin-chip { background: rgba(251,191,36,0.15); color: #f59e0b; }
-
-/* ---- Coin section ---- */
-.coin-balance-row {
-  display: flex; align-items: baseline; gap: 6px;
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--hairline);
+/* ---- Content-task stage checklist (Idea/Script/Film/Edit/Published) ---- */
+.content-task-row { flex-direction: column; align-items: stretch; gap: 8px; }
+.content-stages {
+  display: flex; gap: 4px; flex-wrap: wrap;
 }
-.coin-big {
-  font-size: 28px; font-weight: 700; font-family: var(--font-mono);
-  color: var(--amber);
-}
-.coin-unit { font-size: 14px; color: var(--fg-muted); }
-
-/* ---- Reward rows ---- */
-.reward-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--hairline);
-  transition: background 0.12s;
-}
-.reward-row:last-child { border-bottom: none; }
-.reward-row.locked { opacity: 0.45; }
-
-.reward-icon { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
-.reward-info { flex: 1; min-width: 0; }
-.reward-name { font-size: 14px; font-weight: 500; display: block; }
-.reward-cost-label {
-  font-size: 11px; color: var(--amber); font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-.redeem-btn {
-  padding: 5px 14px; border-radius: var(--radius-sm);
-  background: var(--amber-soft); border: 1px solid var(--amber-line);
-  color: var(--amber); font-size: 12px; font-weight: 600;
-  font-family: var(--font-sans); cursor: pointer;
-  transition: all 0.15s; flex-shrink: 0;
-}
-.redeem-btn:hover:not(:disabled) { background: var(--amber); color: #000; }
-.redeem-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* ---- Redeem Modal ---- */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.6);
-  display: flex; align-items: center; justify-content: center;
-  padding: var(--gutter);
-  backdrop-filter: blur(4px);
-}
-.modal-box {
-  background: var(--bg-elev);
+.stage-check {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 99px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-lg);
-  padding: 24px 20px;
-  width: 100%; max-width: 320px;
-  text-align: center;
+  font-size: 11px; color: var(--fg-dim); cursor: pointer;
+  transition: all 0.15s;
 }
-.modal-reward-icon { font-size: 40px; margin-bottom: 10px; }
-.modal-reward-name {
-  font-size: 18px; font-weight: 700; margin-bottom: 6px;
+.stage-check svg { width: 10px; height: 10px; opacity: 0.25; }
+.stage-check.done {
+  background: var(--green-soft); border-color: var(--green); color: var(--green);
 }
-.modal-reward-cost {
-  font-size: 14px; color: var(--amber); font-family: var(--font-mono);
-  font-weight: 600; margin-bottom: 4px;
-}
-.modal-reward-after {
-  font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono);
-  margin-bottom: 20px;
-}
-.modal-actions { display: flex; gap: 10px; }
-.modal-cancel, .modal-confirm {
-  flex: 1; padding: 10px; border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 600; font-family: var(--font-sans);
-  cursor: pointer; border: none; transition: all 0.15s;
-}
-.modal-cancel {
-  background: var(--bg-elev-2); color: var(--fg-muted);
-  border: 1px solid var(--hairline-strong);
-}
-.modal-cancel:hover { color: var(--fg); }
-.modal-confirm {
-  background: var(--amber); color: #000;
-}
-.modal-confirm:hover { opacity: 0.88; }
+.stage-check.done svg { opacity: 1; }
 
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
