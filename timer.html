@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="OAT OS"/>
+  <title>Circuit Timer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .icon-btn[href] { text-decoration: none; }
+
+    .timer-container { padding-top: 20px; padding-bottom: 40px; }
+
+    .timer-setup { padding: 20px 18px; }
+    .timer-field { margin-bottom: 16px; }
+    .timer-field:last-of-type { margin-bottom: 20px; }
+    .timer-field label {
+      display: block; font-size: 12px; color: var(--fg-muted); margin-bottom: 6px;
+    }
+    .timer-field input {
+      width: 100%; padding: 12px 14px; font-size: 20px; text-align: center;
+      background: var(--bg-elev-2); border: 1px solid var(--hairline-strong);
+      border-radius: var(--radius-md); color: var(--fg);
+      font-family: var(--font-mono); font-weight: 600; outline: none;
+    }
+    .timer-field input:focus { border-color: var(--blue); }
+    .timer-presets { display: flex; gap: 6px; margin-top: 8px; }
+    .timer-preset-btn {
+      flex: 1; padding: 6px 4px; font-size: 11px;
+      background: var(--chip-bg); border: 1px solid var(--hairline);
+      border-radius: var(--radius-sm); color: var(--fg-muted); cursor: pointer;
+    }
+    .timer-preset-btn:hover { color: var(--fg); border-color: var(--hairline-strong); }
+
+    .timer-start-btn {
+      width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+      background: var(--green); color: #04140f; border: none;
+      border-radius: var(--radius-md); cursor: pointer;
+    }
+    .timer-start-btn:active { opacity: 0.85; }
+
+    .timer-run { padding: 28px 18px 22px; text-align: center; }
+    .timer-phase {
+      font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; margin-bottom: 18px;
+      color: var(--green);
+    }
+    .timer-run.rest .timer-phase { color: var(--blue); }
+    .timer-run.done .timer-phase { color: var(--amber); }
+
+    .timer-ring-wrap { position: relative; width: 220px; height: 220px; margin: 0 auto 22px; }
+    .timer-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .timer-ring-track { fill: none; stroke: var(--hairline-strong); stroke-width: 10; }
+    .timer-ring-fill {
+      fill: none; stroke: var(--green); stroke-width: 10; stroke-linecap: round;
+      transition: stroke-dashoffset 0.25s linear, stroke 0.3s ease;
+    }
+    .timer-run.rest .timer-ring-fill { stroke: var(--blue); }
+    .timer-run.done .timer-ring-fill { stroke: var(--amber); }
+    .timer-countdown {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 56px; font-weight: 700; font-family: var(--font-mono); color: var(--fg);
+    }
+
+    .timer-stats {
+      display: flex; justify-content: center; gap: 32px; margin-bottom: 24px;
+    }
+    .timer-stat-label { font-size: 11px; color: var(--fg-muted); margin-bottom: 4px; }
+    .timer-stat-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
+
+    .timer-controls { display: flex; gap: 10px; }
+    .timer-controls button {
+      flex: 1; padding: 14px; font-size: 14px; font-weight: 600;
+      border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-sans);
+      border: 1px solid var(--hairline-strong); background: var(--bg-elev-2); color: var(--fg);
+    }
+    .timer-controls button.primary { background: var(--amber); color: #241a00; border: none; }
+    .timer-controls button:active { opacity: 0.85; }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">Circuit Timer</div>
+    <div class="header-date" id="header-date"></div>
+  </div>
+  <div class="header-right">
+    <a class="icon-btn" href="index.html" title="กลับ Dashboard">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3 5 8l5 5"/>
+      </svg>
+    </a>
+    <button class="icon-btn" id="theme-btn" title="Toggle theme">
+      <svg id="icon-sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M14.5 8H13M3 8H1.5M12.6 3.4l-1.05 1.05M4.45 11.55 3.4 12.6M12.6 12.6l-1.05-1.05M4.45 4.45 3.4 3.4"/>
+      </svg>
+      <svg id="icon-moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="display:none">
+        <path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7Z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="container timer-container">
+
+  <!-- Setup -->
+  <div class="section">
+    <div class="card timer-setup" id="timer-setup">
+      <div class="timer-field">
+        <label>⚡ ออกกำลังกาย (วินาที)</label>
+        <input type="number" id="work-sec" min="1" step="1" inputmode="numeric"/>
+      </div>
+      <div class="timer-field">
+        <label>😮‍💨 พัก (วินาที)</label>
+        <input type="number" id="rest-sec" min="0" step="1" inputmode="numeric"/>
+      </div>
+      <div class="timer-field">
+        <label>🔁 จำนวนเซท</label>
+        <input type="number" id="set-count" min="1" step="1" inputmode="numeric"/>
+      </div>
+      <button class="timer-start-btn" id="start-btn">เริ่ม ▶</button>
+    </div>
+  </div>
+
+  <!-- Running -->
+  <div class="section" id="timer-run-section" hidden>
+    <div class="card timer-run" id="timer-run">
+      <div class="timer-phase" id="timer-phase">ออกกำลังกาย</div>
+      <div class="timer-ring-wrap">
+        <svg viewBox="0 0 220 220">
+          <circle class="timer-ring-track" cx="110" cy="110" r="100"/>
+          <circle class="timer-ring-fill" id="timer-ring-fill" cx="110" cy="110" r="100"/>
+        </svg>
+        <div class="timer-countdown" id="timer-countdown">0</div>
+      </div>
+      <div class="timer-stats">
+        <div>
+          <div class="timer-stat-label">เซท</div>
+          <div class="timer-stat-val" id="timer-set-label">1 / 1</div>
+        </div>
+        <div>
+          <div class="timer-stat-label">เวลารวม</div>
+          <div class="timer-stat-val" id="timer-total">00:00</div>
+        </div>
+      </div>
+      <div class="timer-controls">
+        <button id="pause-btn">⏸ หยุดชั่วคราว</button>
+        <button id="reset-btn" class="primary">⏹ รีเซ็ต</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script src="timer.js"></script>
+</body>
+</html>
