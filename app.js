@@ -154,6 +154,10 @@ async function loadGameState() {
   if (!page) return;
 
   gameStatePageId = page.id;
+  // ถ้าคอลัมน์ "Fried Quit Since" ยังไม่มีใน Notion ให้สร้างอัตโนมัติ (ครั้งแรกครั้งเดียว)
+  if (!("Fried Quit Since" in page.properties)) {
+    await notionPatch(`/databases/${DB.gameState}`, { properties: { "Fried Quit Since": { date: {} } } });
+  }
   parseGameState(page.properties);
   renderAll();
 }
@@ -163,6 +167,7 @@ function parseGameState(props) {
     savingTotal:      props["Saving Total"]?.number ?? 0,
     coffeeQuitSince:  props["Coffee Quit Since"]?.date?.start ?? null,
     alcoholQuitSince: props["Alcohol Quit Since"]?.date?.start ?? null,
+    friedQuitSince:   props["Fried Quit Since"]?.date?.start ?? null,
   };
 }
 
@@ -175,6 +180,7 @@ async function saveGameState(updates = {}) {
   };
   if (gameState.coffeeQuitSince)  props["Coffee Quit Since"]  = { date:{ start: gameState.coffeeQuitSince } };
   if (gameState.alcoholQuitSince) props["Alcohol Quit Since"] = { date:{ start: gameState.alcoholQuitSince } };
+  if (gameState.friedQuitSince)   props["Fried Quit Since"]   = { date:{ start: gameState.friedQuitSince } };
 
   await notionPatch(`/pages/${gameStatePageId}`, { properties: props });
   renderAll();
@@ -198,6 +204,7 @@ function renderSaving() {
 const QUIT_KEYS = {
   coffee:  { stateKey:"coffeeQuitSince",  label:"หยุดกาแฟ" },
   alcohol: { stateKey:"alcoholQuitSince", label:"หยุดแอลกอฮอล์" },
+  fried:   { stateKey:"friedQuitSince",   label:"หยุดของทอด" },
 };
 
 function formatQuitElapsed(sinceIso) {
@@ -245,6 +252,7 @@ async function resetQuitCounter(key) {
 
 document.getElementById("quit-coffee-reset").addEventListener("click", () => resetQuitCounter("coffee"));
 document.getElementById("quit-alcohol-reset").addEventListener("click", () => resetQuitCounter("alcohol"));
+document.getElementById("quit-fried-reset").addEventListener("click", () => resetQuitCounter("fried"));
 setInterval(renderQuitCounters, 60000);
 
 // ===== HABITS =====
