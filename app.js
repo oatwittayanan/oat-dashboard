@@ -111,24 +111,26 @@ function showToast(msg, type = "success") {
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
 // ===== API =====
-async function notionGet(path) {
+// กุญแจ Dashboard (2026-11-25): Worker รับเฉพาะคำขอที่มีกุญแจ · กุญแจเก็บในเครื่องนี้เท่านั้น ไม่อยู่ในโค้ด
+async function apiFetch(path, opts = {}, retried = false) {
   if (!apiBase) return null;
-  const res = await fetch(`${apiBase}/api${path}`, { method:"GET" });
+  const key = localStorage.getItem("oat_api_key") || "";
+  const headers = { ...(opts.headers || {}), ...(key ? { "X-Oat-Key": key } : {}) };
+  const res = await fetch(`${apiBase}/api${path}`, { ...opts, headers });
+  if (res.status === 401 && !retried) {
+    const k = (window.prompt("ใส่กุญแจ Dashboard (ใส่ครั้งเดียวต่อเครื่อง)") || "").trim();
+    if (k) { localStorage.setItem("oat_api_key", k); return apiFetch(path, opts, true); }
+  }
   return res.ok ? res.json() : null;
+}
+async function notionGet(path) {
+  return apiFetch(path, { method:"GET" });
 }
 async function notionPost(path, body) {
-  if (!apiBase) return null;
-  const res = await fetch(`${apiBase}/api${path}`, {
-    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body),
-  });
-  return res.ok ? res.json() : null;
+  return apiFetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
 }
 async function notionPatch(path, body) {
-  if (!apiBase) return null;
-  const res = await fetch(`${apiBase}/api${path}`, {
-    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body),
-  });
-  return res.ok ? res.json() : null;
+  return apiFetch(path, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
 }
 
 function checkIcon() {
